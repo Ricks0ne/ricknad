@@ -47,7 +47,7 @@ const HomePage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col items-center justify-center text-center mb-12 pt-10">
-        <h1 className="text-5xl font-bold text-monad-primary mb-4">Welcome To Monad Rick</h1>
+        <h1 className="text-5xl font-bold text-monad-primary mb-4">Welcome to Ricknad</h1>
         <p className="text-lg text-gray-600 italic">
           Generate Smart Contract Solidity code in seconds and ask AI Monad any question
         </p>

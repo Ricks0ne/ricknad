@@ -25,7 +25,7 @@ export const getWalletBalance = async (address: string) => {
   }
 };
 
-// Get wallet transaction history - improved with more details
+// Get wallet transaction history - improved with more robust block search
 export const getWalletTransactions = async (address: string, limit = 10): Promise<Transaction[]> => {
   try {
     const provider = getProvider();
@@ -34,7 +34,7 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
     
     // Get recent blocks
     const transactions: Transaction[] = [];
-    let blocksToSearch = 20; // Increased to find more transactions
+    let blocksToSearch = 50; // Increased to find more transactions
     
     for (let i = 0; i < blocksToSearch && blockNumber - i >= 0; i++) {
       console.log(`Fetching block ${blockNumber - i}`);
@@ -45,36 +45,41 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
         
         // Process each transaction in the block
         for (const txHash of block.transactions) {
-          const tx = await provider.getTransaction(txHash);
-          if (!tx) continue;
-          
-          // Check if the transaction involves our address
-          if (tx.from?.toLowerCase() === address.toLowerCase() || 
-              (tx.to && tx.to.toLowerCase() === address.toLowerCase())) {
+          try {
+            const tx = await provider.getTransaction(txHash);
+            if (!tx) continue;
             
-            // Get transaction receipt for status
-            const receipt = await provider.getTransactionReceipt(txHash);
-            const status = receipt ? (receipt.status ? 'success' : 'failed') : 'pending';
-            
-            // Get the timestamp from the block
-            const txBlock = tx.blockNumber ? await provider.getBlock(tx.blockNumber) : null;
-            const timestamp = txBlock ? txBlock.timestamp * 1000 : Date.now();
-            
-            // Add to our transactions array
-            transactions.push({
-              hash: tx.hash,
-              from: tx.from,
-              to: tx.to || '',
-              value: ethers.formatEther(tx.value),
-              timestamp: timestamp,
-              status: status
-            });
-            
-            // If we have enough transactions, return the result
-            if (transactions.length >= limit) {
-              console.log(`Found ${transactions.length} transactions for ${address}`);
-              return transactions;
+            // Check if the transaction involves our address
+            if (tx.from?.toLowerCase() === address.toLowerCase() || 
+                (tx.to && tx.to.toLowerCase() === address.toLowerCase())) {
+              
+              // Get transaction receipt for status
+              const receipt = await provider.getTransactionReceipt(txHash);
+              const status = receipt ? (receipt.status ? 'success' : 'failed') : 'pending';
+              
+              // Get the timestamp from the block
+              const txBlock = tx.blockNumber ? await provider.getBlock(tx.blockNumber) : null;
+              const timestamp = txBlock ? txBlock.timestamp * 1000 : Date.now();
+              
+              // Add to our transactions array
+              transactions.push({
+                hash: tx.hash,
+                from: tx.from,
+                to: tx.to || '',
+                value: ethers.formatEther(tx.value),
+                timestamp: timestamp,
+                status: status
+              });
+              
+              // If we have enough transactions, return the result
+              if (transactions.length >= limit) {
+                console.log(`Found ${transactions.length} transactions for ${address}`);
+                return transactions;
+              }
             }
+          } catch (txError) {
+            console.error(`Error processing transaction ${txHash}:`, txError);
+            continue; // Skip to next transaction if there's an error with this one
           }
         }
       }
