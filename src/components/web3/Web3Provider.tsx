@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { MONAD_TESTNET } from '../../config/monad';
+import { toast } from 'sonner';
+import { addMonadNetwork } from '@/utils/blockchain';
 
 // Define context type
 interface Web3ContextType {
@@ -58,6 +60,36 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
     initProvider();
   }, []);
 
+  // Check if wallet is already connected on page load
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0) {
+            const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(ethersProvider);
+            
+            const account = accounts[0];
+            setAccount(account);
+            
+            const signer = await ethersProvider.getSigner();
+            setSigner(signer);
+            
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            setChainId(chainId);
+            
+            setIsConnected(true);
+          }
+        } catch (error) {
+          console.error("Failed to check wallet connection:", error);
+        }
+      }
+    };
+    
+    checkConnection();
+  }, []);
+
   // Connect wallet
   const connectWallet = async () => {
     setIsConnecting(true);
@@ -65,6 +97,7 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
 
     try {
       if (!window.ethereum) {
+        toast.error("No Ethereum provider found. Please install MetaMask or another compatible wallet.");
         setError("No Ethereum provider found. Please install MetaMask");
         setIsConnecting(false);
         return;
@@ -82,32 +115,28 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
       setChainId(chainId);
       
       // Check if we need to switch to Monad Testnet
-      if (chainId !== `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`) {
+      const targetChainId = `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`;
+      if (chainId !== targetChainId) {
         try {
           // Try to switch to Monad Testnet
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}` }],
+            params: [{ chainId: targetChainId }],
           });
+          
+          // Update chain ID after switching
+          setChainId(targetChainId);
         } catch (switchError: any) {
           // If the chain is not added to MetaMask, add it
           if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`,
-                  chainName: MONAD_TESTNET.name,
-                  nativeCurrency: {
-                    name: MONAD_TESTNET.currency.name,
-                    symbol: MONAD_TESTNET.currency.symbol,
-                    decimals: MONAD_TESTNET.currency.decimals,
-                  },
-                  rpcUrls: [MONAD_TESTNET.rpcUrl],
-                  blockExplorerUrls: [MONAD_TESTNET.blockExplorerUrl],
-                },
-              ],
-            });
+            try {
+              await addMonadNetwork();
+              toast.success("Monad Testnet added to your wallet");
+            } catch (addError) {
+              console.error("Failed to add Monad network:", addError);
+              toast.error("Failed to add Monad network to your wallet");
+              throw addError;
+            }
           } else {
             throw switchError;
           }
@@ -123,9 +152,11 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
       setSigner(signer);
       
       setIsConnected(true);
-    } catch (error) {
+      toast.success("Wallet connected successfully!");
+    } catch (error: any) {
       console.error("Failed to connect wallet:", error);
       setError("Failed to connect wallet");
+      toast.error(error.message || "Failed to connect wallet");
     } finally {
       setIsConnecting(false);
     }
@@ -135,8 +166,16 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
   const disconnectWallet = () => {
     setAccount(null);
     setSigner(null);
-    setChainId(null);
     setIsConnected(false);
+    toast.info("Wallet disconnected");
+    
+    // Reinitialize the read-only provider for Monad Testnet
+    try {
+      const provider = new ethers.JsonRpcProvider(MONAD_TESTNET.rpcUrl);
+      setProvider(provider);
+    } catch (error) {
+      console.error("Failed to reinitialize provider:", error);
+    }
   };
 
   // Listen for account changes
@@ -146,16 +185,23 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
         if (accounts.length === 0) {
           // User disconnected their wallet
           disconnectWallet();
-        } else {
+        } else if (isConnected) {
           // User switched accounts
           setAccount(accounts[0]);
+          toast.info("Account changed");
         }
       };
 
       const handleChainChanged = (chainId: string) => {
         // Handle chain change
         setChainId(chainId);
-        window.location.reload(); // Recommended by MetaMask
+        toast.info("Network changed");
+        
+        // Check if the new chain is Monad Testnet
+        const targetChainId = `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`;
+        if (chainId !== targetChainId && isConnected) {
+          toast.warning("Please switch to Monad Testnet for full functionality");
+        }
       };
 
       window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -166,7 +212,7 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, []);
+  }, [isConnected]);
 
   // Context value
   const contextValue: Web3ContextType = {
