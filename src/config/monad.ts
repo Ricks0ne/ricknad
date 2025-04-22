@@ -5,7 +5,7 @@ import { NetworkInfo } from "../types/blockchain";
 export const MONAD_TESTNET: NetworkInfo = {
   chainId: "1284",
   name: "Monad Testnet",
-  rpcUrl: "https://rpc.monad.xyz/monad_testnet",
+  rpcUrl: "https://testnet-rpc.monad.xyz",
   blockExplorerUrl: "https://testnet.monadexplorer.com",
   faucet: "https://testnet.monad.xyz/",
   currency: {

@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
-import { getWalletBalance, getWalletTransactions } from "@/utils/blockchain";
+import { Search, ExternalLink } from "lucide-react";
+import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const HomePage: React.FC = () => {
   const [searchAddress, setSearchAddress] = useState('');
@@ -35,6 +36,12 @@ const HomePage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Format timestamp to readable date
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
   };
 
   return (
@@ -89,35 +96,50 @@ const HomePage: React.FC = () => {
             </CardHeader>
             <CardContent>
               {transactions.length > 0 ? (
-                <div className="space-y-4">
-                  {transactions.map((tx) => (
-                    <div key={tx.hash} className="p-4 rounded-lg border border-gray-200">
-                      <div className="flex justify-between mb-1">
-                        <span className="font-medium">Hash:</span>
-                        <a 
-                          href={`${MONAD_TESTNET.blockExplorerUrl}/tx/${tx.hash}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline truncate max-w-[200px]"
-                        >
-                          {tx.hash.substring(0, 10)}...
-                        </a>
-                      </div>
-                      <div className="flex justify-between mb-1">
-                        <span className="font-medium">From:</span>
-                        <span className="truncate max-w-[200px]">{tx.from.substring(0, 10)}...</span>
-                      </div>
-                      <div className="flex justify-between mb-1">
-                        <span className="font-medium">To:</span>
-                        <span className="truncate max-w-[200px]">{tx.to.substring(0, 10)}...</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Value:</span>
-                        <span>{tx.value} MONAD</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Transaction Hash</TableHead>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.hash}>
+                        <TableCell>
+                          <a 
+                            href={`${MONAD_TESTNET.blockExplorerUrl}/tx/${tx.hash}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:underline flex items-center"
+                          >
+                            {formatAddress(tx.hash)}
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </a>
+                        </TableCell>
+                        <TableCell>{formatAddress(tx.from)}</TableCell>
+                        <TableCell>{formatAddress(tx.to)}</TableCell>
+                        <TableCell>{tx.value} MONAD</TableCell>
+                        <TableCell>{formatDate(tx.timestamp)}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            tx.status === 'success' 
+                              ? 'bg-green-100 text-green-800' 
+                              : tx.status === 'failed' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {tx.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <div className="text-center py-4 text-gray-500">
                   No transactions found
