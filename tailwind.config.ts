@@ -19,6 +19,13 @@ export default {
 		},
 		extend: {
 			colors: {
+				monad: {
+					primary: '#008080', // Deep teal
+					secondary: '#F0F0F0', // Light gray
+					accent: '#7DF9FF', // Electric blue
+					dark: '#000000', // Black for sidebar
+					light: '#FFFFFF', // White for text
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
