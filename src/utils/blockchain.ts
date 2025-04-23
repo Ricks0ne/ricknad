@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 import { MONAD_TESTNET } from "../config/monad";
 import { Transaction } from "../types/blockchain";
@@ -123,15 +122,27 @@ export const addMonadNetwork = async () => {
   }
 };
 
-// Deploy a smart contract
+// Deploy a smart contract - Fixed bytecode handling
 export const deployContract = async (abi: any[], bytecode: string, signer: ethers.Signer) => {
   try {
     console.log("Deploying contract with signer:", signer);
     console.log("ABI length:", abi.length);
     console.log("Bytecode length:", bytecode.length);
     
+    // Ensure bytecode is properly formatted with 0x prefix
+    const formattedBytecode = bytecode.startsWith('0x') ? bytecode : `0x${bytecode}`;
+    
+    // Validate bytecode format
+    try {
+      // Verify this is a valid hex string that ethers can handle
+      ethers.getBytes(formattedBytecode);
+    } catch (error) {
+      console.error("Invalid bytecode format:", error);
+      throw new Error("Invalid bytecode format. Please recompile the contract.");
+    }
+    
     // Create a contract factory with the ABI, bytecode, and signer
-    const factory = new ethers.ContractFactory(abi, bytecode, signer);
+    const factory = new ethers.ContractFactory(abi, formattedBytecode, signer);
     console.log("Contract factory created");
     
     // Deploy the contract - this will trigger a transaction signature request
