@@ -126,13 +126,33 @@ export const addMonadNetwork = async () => {
 // Deploy a smart contract
 export const deployContract = async (abi: any[], bytecode: string, signer: ethers.Signer) => {
   try {
+    console.log("Deploying contract with signer:", signer);
+    console.log("ABI length:", abi.length);
+    console.log("Bytecode length:", bytecode.length);
+    
+    // Create a contract factory with the ABI, bytecode, and signer
     const factory = new ethers.ContractFactory(abi, bytecode, signer);
+    console.log("Contract factory created");
+    
+    // Deploy the contract - this will trigger a transaction signature request
+    console.log("Deploying contract...");
     const contract = await factory.deploy();
+    console.log("Deployment transaction sent, waiting for confirmation...");
+    
+    // Wait for the contract to be deployed
     await contract.waitForDeployment();
+    console.log("Contract deployed!");
+    
+    // Get the deployed contract address and transaction hash
+    const address = await contract.getAddress();
+    const txHash = contract.deploymentTransaction()?.hash || '';
+    
+    console.log("Deployed at address:", address);
+    console.log("Deployment transaction hash:", txHash);
     
     return {
-      address: await contract.getAddress(),
-      deploymentTx: contract.deploymentTransaction()?.hash || '',
+      address: address,
+      deploymentTx: txHash,
     };
   } catch (error) {
     console.error("Failed to deploy contract:", error);
