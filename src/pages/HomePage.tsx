@@ -1,20 +1,29 @@
-
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, Rocket, MessageSquare } from "lucide-react";
 import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const HomePage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchAddress, setSearchAddress] = useState('');
   const [walletBalance, setWalletBalance] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleContractGeneratorClick = () => {
+    navigate('/contract-generator');
+  };
+
+  const handleExplainerClick = () => {
+    navigate('/explainer');
+  };
 
   const handleSearch = async () => {
     if (!searchAddress) return;
@@ -38,7 +47,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // Format timestamp to readable date
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
@@ -160,7 +168,12 @@ const HomePage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full" onClick={() => window.location.href = '/contract-generator'}>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleContractGeneratorClick}
+              >
+                <Rocket className="mr-2 h-5 w-5" />
                 Launch Generator
               </Button>
             </CardContent>
@@ -174,7 +187,12 @@ const HomePage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full" onClick={() => window.location.href = '/explainer'}>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleExplainerClick}
+              >
+                <MessageSquare className="mr-2 h-5 w-5" />
                 Ask Monad
               </Button>
             </CardContent>
