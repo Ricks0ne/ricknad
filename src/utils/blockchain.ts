@@ -1,3 +1,4 @@
+
 import { ethers } from "ethers";
 import { MONAD_TESTNET } from "../config/monad";
 import { Transaction } from "../types/blockchain";
@@ -24,8 +25,8 @@ export const getWalletBalance = async (address: string) => {
   }
 };
 
-// Get wallet transaction history - improved with more robust block search
-export const getWalletTransactions = async (address: string, limit = 10): Promise<Transaction[]> => {
+// Get wallet transaction history - optimized for real-time recent transactions
+export const getWalletTransactions = async (address: string, limit = 5): Promise<Transaction[]> => {
   try {
     const provider = getProvider();
     const blockNumber = await provider.getBlockNumber();
@@ -33,9 +34,14 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
     
     // Get recent blocks
     const transactions: Transaction[] = [];
-    let blocksToSearch = 50; // Increased to find more transactions
+    const blocksToSearch = 100; // Increased to find more transactions
+    
+    // Normalize the search address
+    const normalizedSearchAddress = address.toLowerCase();
     
     for (let i = 0; i < blocksToSearch && blockNumber - i >= 0; i++) {
+      if (transactions.length >= limit) break; // Stop once we have enough transactions
+      
       console.log(`Fetching block ${blockNumber - i}`);
       const block = await provider.getBlock(blockNumber - i);
       
@@ -44,13 +50,15 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
         
         // Process each transaction in the block
         for (const txHash of block.transactions) {
+          if (transactions.length >= limit) break; // Stop once we have enough transactions
+          
           try {
             const tx = await provider.getTransaction(txHash);
             if (!tx) continue;
             
-            // Check if the transaction involves our address
-            if (tx.from?.toLowerCase() === address.toLowerCase() || 
-                (tx.to && tx.to.toLowerCase() === address.toLowerCase())) {
+            // Check if the transaction involves our address (normalized comparison)
+            if (tx.from?.toLowerCase() === normalizedSearchAddress || 
+                (tx.to && tx.to.toLowerCase() === normalizedSearchAddress)) {
               
               // Get transaction receipt for status
               const receipt = await provider.getTransactionReceipt(txHash);
@@ -69,12 +77,6 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
                 timestamp: timestamp,
                 status: status
               });
-              
-              // If we have enough transactions, return the result
-              if (transactions.length >= limit) {
-                console.log(`Found ${transactions.length} transactions for ${address}`);
-                return transactions;
-              }
             }
           } catch (txError) {
             console.error(`Error processing transaction ${txHash}:`, txError);
@@ -84,8 +86,11 @@ export const getWalletTransactions = async (address: string, limit = 10): Promis
       }
     }
     
+    // Sort transactions by timestamp, newest first
+    transactions.sort((a, b) => b.timestamp - a.timestamp);
+    
     console.log(`Found ${transactions.length} transactions for ${address}`);
-    return transactions;
+    return transactions.slice(0, limit); // Ensure we only return the requested limit
   } catch (error) {
     console.error("Failed to get wallet transactions:", error);
     return [];

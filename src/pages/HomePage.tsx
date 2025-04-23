@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Rocket, MessageSquare, ExternalLink } from "lucide-react";
+import { Search, Rocket, MessageSquare, ExternalLink, Clock } from "lucide-react";
 import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
@@ -37,8 +37,8 @@ const HomePage: React.FC = () => {
       const balance = await getWalletBalance(searchAddress);
       setWalletBalance(balance);
       
-      // Get transactions
-      const txs = await getWalletTransactions(searchAddress);
+      // Get transactions - limit to 5 recent transactions
+      const txs = await getWalletTransactions(searchAddress, 5);
       setTransactions(txs);
     } catch (err) {
       console.error('Error searching address:', err);
@@ -97,11 +97,14 @@ const HomePage: React.FC = () => {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>
-                Recent transactions for this address
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Transaction History</CardTitle>
+                <CardDescription>
+                  5 most recent transactions
+                </CardDescription>
+              </div>
+              <Clock className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {transactions.length > 0 ? (
@@ -151,7 +154,7 @@ const HomePage: React.FC = () => {
                 </Table>
               ) : (
                 <div className="text-center py-4 text-gray-500">
-                  No transactions found
+                  {isLoading ? 'Fetching transactions...' : 'No transactions found'}
                 </div>
               )}
             </CardContent>
