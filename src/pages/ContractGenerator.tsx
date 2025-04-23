@@ -26,7 +26,6 @@ const ContractGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasBalance, setHasBalance] = useState(false);
 
-  // Check wallet balance for deployment
   React.useEffect(() => {
     const checkBalance = async () => {
       if (account) {
@@ -40,43 +39,98 @@ const ContractGenerator: React.FC = () => {
     }
   }, [account, isConnected]);
 
-  // Generate unique contract from prompt
   const generateContract = async () => {
     if (!prompt) return;
-    
+
     setIsGenerating(true);
     setError(null);
-    
     try {
-      // Generate unique elements based on the prompt
       const seed = Math.floor(Math.random() * 10000);
       const currentDate = new Date().toISOString();
-      
-      // Generate variable names based on the prompt
-      const words = prompt.split(/\s+/).filter(word => word.length > 3);
-      const varName1 = words.length > 0 ? words[0].toLowerCase() : 'data';
-      const varName2 = words.length > 1 ? words[1].toLowerCase() : 'value';
-      const eventName = words.length > 2 ? 
-        words[2].charAt(0).toUpperCase() + words[2].slice(1) + 'Updated' : 
-        'DataUpdated';
-      
-      // Create a more advanced contract based on the prompt with randomization
-      const features = [
-        'basic storage',
-        'access control',
-        'events',
-        'modifiers',
-        'mapping',
-        'struct'
-      ];
-      
-      // Select features based on seed
-      const selectedFeatures = features.filter((_, index) => 
-        (seed + index) % 3 === 0
-      );
-      
-      // Generate a unique contract based on the prompt and selected features
-      const generatedCode = `// SPDX-License-Identifier: MIT
+
+      // Lowercase prompt for easier searching
+      const promptLC = prompt.toLowerCase();
+
+      let generatedCode = "";
+      // Pattern 1: NFT with minting
+      if (
+        (promptLC.includes("nft") && promptLC.includes("mint")) ||
+        promptLC.includes("erc721")
+      ) {
+        // ERC721 NFT contract with minting
+        generatedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title ${contractName}
+ * @dev ERC721 NFT Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ERC721, Ownable {
+    uint256 public nextTokenId;
+
+    constructor() ERC721("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {}
+
+    function mint(address to) public onlyOwner {
+        _safeMint(to, nextTokenId);
+        nextTokenId++;
+    }
+}
+`;
+      }
+      // Pattern 2: ERC20 token with transfer
+      else if (
+        ((promptLC.includes("erc20") || promptLC.includes("token")) && promptLC.includes("transfer")) ||
+        promptLC.includes("fungible")
+      ) {
+        generatedCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title ${contractName}
+ * @dev ERC20 Token Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ERC20, Ownable {
+    constructor(uint256 initialSupply) ERC20("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {
+        _mint(msg.sender, initialSupply);
+    }
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+}
+`;
+      }
+      // Add more prompt-based templates here as needed, e.g., simple voting, DAO, etc.
+      else {
+        // Default "fun" contract (fallback to previous logic)
+        const words = prompt.split(/\s+/).filter(word => word.length > 3);
+        const varName1 = words.length > 0 ? words[0].toLowerCase() : 'data';
+        const varName2 = words.length > 1 ? words[1].toLowerCase() : 'value';
+        const eventName = words.length > 2 ? 
+          words[2].charAt(0).toUpperCase() + words[2].slice(1) + 'Updated' : 
+          'DataUpdated';
+        const features = [
+          'basic storage',
+          'access control',
+          'events',
+          'modifiers',
+          'mapping',
+          'struct'
+        ];
+        const selectedFeatures = features.filter((_, index) => 
+          (seed + index) % 3 === 0
+        );
+        generatedCode = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 /**
@@ -177,7 +231,8 @@ contract ${contractName} {
         owner = newOwner;
     }
 }`;
-      
+      }
+
       setContractCode(generatedCode);
       toast.success("Contract generated successfully!");
     } catch (err) {
@@ -189,7 +244,6 @@ contract ${contractName} {
     }
   };
 
-  // Compile the contract - Fixed to generate proper bytecode format
   const compileContract = async () => {
     if (!contractCode) return;
     
@@ -197,16 +251,12 @@ contract ${contractName} {
     setError(null);
     
     try {
-      // In a real app, this would use a compiler service or library
-      // For now we'll simulate compilation with a timeout
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Generate different ABI based on the contract code to simulate real compilation
       const hasStructs = contractCode.includes('struct');
       const hasMappings = contractCode.includes('mapping');
       const functionCount = (contractCode.match(/function\s+\w+/g) || []).length;
       
-      // Create a more realistic ABI based on the contract content
       const generatedAbi: any[] = [
         {
           "inputs": [],
@@ -259,7 +309,6 @@ contract ${contractName} {
         }
       ];
       
-      // Add function entries to ABI
       const functionMatches = [...contractCode.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure)?\s*(?:returns\s*\(([^)]*)\))?/g)];
       
       for (const match of functionMatches) {
@@ -294,8 +343,6 @@ contract ${contractName} {
         generatedAbi.push(abiFunction);
       }
       
-      // Generate a valid bytecode that will work with ethers.js
-      // Just a short, but valid hex string for demonstration
       const validBytecodeSample = "608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063771602f714610030575b600080fd5b61004a6004803603810190610045919061009d565b610060565b60405161005791906100d9565b60405180910390f35b6000818361006e91906100f4565b905092915050565b600080fd5b6000819050919050565b61008a8161007d565b811461009557600080fd5b50565b6000813590506100a781610081565b92915050565b600080604083850312156100b4576100b3610079565b5b60006100c285828601610098565b92505060206100d385828601610098565b9150509250929050565b6100e38161007d565b82525050565b60006020820190506100fe60008301846100dc565b92915050565b7f4e487b710000000000000000000000000000000000000000000000000000000060e052604160045260246000fd5b600061013f8261007d565b915061014a8361007d565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0382111561017f5761017e610105565b5b82820190509291505056fea264697066735822122024d33be7c73c099cedba7e11787e893151b39c977d9712cce3a0db7f94ba066764736f6c634300080d0033";
       
       setCompiledAbi(generatedAbi);
@@ -310,7 +357,6 @@ contract ${contractName} {
     }
   };
 
-  // Deploy the contract
   const deploySmartContract = async () => {
     if (!compiledAbi || !compiledBytecode || !signer) {
       toast.error("Missing required data for deployment");
@@ -327,10 +373,8 @@ contract ${contractName} {
       
       toast.info("Please confirm the transaction in your wallet...");
       
-      // Now actually call the deployContract function from blockchain.ts
       const result = await deployContract(compiledAbi, compiledBytecode, signer);
       
-      // Set the deployment results
       setDeployedAddress(result.address);
       setDeploymentTx(result.deploymentTx);
       
