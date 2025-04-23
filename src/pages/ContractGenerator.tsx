@@ -208,7 +208,7 @@ contract ${contractName} {
       const functionCount = (contractCode.match(/function\s+\w+/g) || []).length;
       
       // Create a more realistic ABI based on the contract content
-      const generatedAbi = [
+      const generatedAbi: any[] = [
         {
           "inputs": [],
           "stateMutability": "nonpayable",
