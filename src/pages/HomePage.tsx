@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Rocket, MessageSquare } from "lucide-react";
+import { Search, Rocket, MessageSquare, ExternalLink } from "lucide-react";
 import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
