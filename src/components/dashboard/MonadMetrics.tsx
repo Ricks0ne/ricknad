@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { blocks, trendingUp, Activity, AlertCircle } from "lucide-react";
+import { Blocks, TrendingUp, Activity, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getProvider } from "@/utils/blockchain";
 
@@ -66,12 +66,12 @@ const MonadMetrics = () => {
     {
       title: "Block Height",
       value: blockHeight?.toString() || "Loading...",
-      icon: blocks,
+      icon: Blocks,
     },
     {
       title: "TPS",
       value: tps ? tps.toFixed(2) : "Loading...",
-      icon: trendingUp,
+      icon: TrendingUp,
     },
     {
       title: "Avg Gas",
