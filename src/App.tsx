@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import HomePage from "./pages/HomePage";
 import ContractGenerator from "./pages/ContractGenerator";
 import Explainer from "./pages/Explainer";
 import Resources from "./pages/Resources";
+import ChatInterface from "./pages/ChatInterface";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -20,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Layout><HomePage /></Layout>} />
           <Route path="/contract-generator" element={<Layout><ContractGenerator /></Layout>} />
           <Route path="/explainer" element={<Layout><Explainer /></Layout>} />
+          <Route path="/chat" element={<Layout><ChatInterface /></Layout>} />
           <Route path="/resources" element={<Layout><Resources /></Layout>} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>

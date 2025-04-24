@@ -7,7 +7,9 @@ import {
   FileCode, 
   Link as LinkIcon, 
   Wallet as WalletIcon, 
-  Search 
+  Search,
+  MessageSquare,
+  ExternalLink
 } from 'lucide-react';
 import { useWeb3 } from '../web3/Web3Provider';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,11 @@ const Sidebar: React.FC = () => {
       name: 'Home',
       path: '/',
       icon: <Database className="h-5 w-5" />,
+    },
+    {
+      name: 'Monad AI Chat',
+      path: '/chat',
+      icon: <MessageSquare className="h-5 w-5" />,
     },
     {
       name: 'Contract Generator',
@@ -104,6 +111,14 @@ const Sidebar: React.FC = () => {
         <div className="text-xs text-gray-500">
           Chain ID: {MONAD_TESTNET.chainId}
         </div>
+        <a 
+          href="https://x.com/0xFred_" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="flex items-center text-sm text-white hover:text-monad-accent mt-4 transition-colors"
+        >
+          Follow me on X: @0xFred_ <ExternalLink className="ml-1 h-3 w-3" />
+        </a>
       </div>
     </div>
   );

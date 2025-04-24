@@ -26,6 +26,10 @@ const HomePage: React.FC = () => {
     navigate('/explainer');
   };
 
+  const handleChatClick = () => {
+    navigate('/chat');
+  };
+
   const handleSearch = async () => {
     if (!searchAddress) return;
     
@@ -56,9 +60,9 @@ const HomePage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col items-center justify-center text-center mb-12 pt-10">
-        <h1 className="text-5xl font-bold text-monad-primary mb-4">Welcome to Ricknad</h1>
+        <h1 className="text-5xl font-bold text-monad-primary mb-4">Welcome to Monad Rick 👨‍🔬</h1>
         <p className="text-lg text-gray-600 italic">
-          Generate Smart Contract Solidity code in seconds and ask AI Monad any question
+          Generate smart contracts & ask Monad AI anything
         </p>
       </div>
 
@@ -166,6 +170,25 @@ const HomePage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <Card>
             <CardHeader>
+              <CardTitle>Unified AI Chat</CardTitle>
+              <CardDescription>
+                Generate contracts & ask questions in one chat interface
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleChatClick}
+              >
+                <MessageSquare className="mr-2 h-5 w-5" />
+                Open Monad AI Chat
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
               <CardTitle>Smart Contract Generator</CardTitle>
               <CardDescription>
                 Use AI to generate, compile and deploy Solidity contracts
@@ -179,25 +202,6 @@ const HomePage: React.FC = () => {
               >
                 <Rocket className="mr-2 h-5 w-5" />
                 Launch Generator
-              </Button>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Monad Explainer</CardTitle>
-              <CardDescription>
-                Ask questions about Monad and get AI-powered answers
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleExplainerClick}
-              >
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Ask Monad
               </Button>
             </CardContent>
           </Card>
