@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Database, 
-  FileCode, 
   Link as LinkIcon, 
-  Wallet as WalletIcon, 
-  Search,
+  Wallet as WalletIcon,
   MessageSquare,
   ExternalLink
 } from 'lucide-react';
@@ -30,16 +27,6 @@ const Sidebar: React.FC = () => {
       name: 'Monad AI Chat',
       path: '/chat',
       icon: <MessageSquare className="h-5 w-5" />,
-    },
-    {
-      name: 'Contract Generator',
-      path: '/contract-generator',
-      icon: <FileCode className="h-5 w-5" />,
-    },
-    {
-      name: 'Monad Explainer',
-      path: '/explainer',
-      icon: <Search className="h-5 w-5" />,
     },
     {
       name: 'Resources',

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Rocket, MessageSquare, ExternalLink, Clock } from "lucide-react";
+import { MessageSquare, ExternalLink, Clock } from "lucide-react";
 import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
@@ -17,14 +16,6 @@ const HomePage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleContractGeneratorClick = () => {
-    navigate('/contract-generator');
-  };
-
-  const handleExplainerClick = () => {
-    navigate('/explainer');
-  };
 
   const handleChatClick = () => {
     navigate('/chat');
@@ -79,7 +70,7 @@ const HomePage: React.FC = () => {
             disabled={isLoading || !searchAddress}
             className="bg-monad-primary hover:bg-monad-accent hover:text-black"
           >
-            {isLoading ? 'Searching...' : <Search className="h-4 w-4 mr-2" />}
+            {isLoading ? 'Searching...' : <MessageSquare className="h-4 w-4 mr-2" />}
             {!isLoading && 'Search'}
           </Button>
         </div>
@@ -167,7 +158,7 @@ const HomePage: React.FC = () => {
       )}
 
       {!walletBalance && !isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 gap-6 mt-8">
           <Card>
             <CardHeader>
               <CardTitle>Unified AI Chat</CardTitle>
@@ -183,25 +174,6 @@ const HomePage: React.FC = () => {
               >
                 <MessageSquare className="mr-2 h-5 w-5" />
                 Open Monad AI Chat
-              </Button>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Smart Contract Generator</CardTitle>
-              <CardDescription>
-                Use AI to generate, compile and deploy Solidity contracts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleContractGeneratorClick}
-              >
-                <Rocket className="mr-2 h-5 w-5" />
-                Launch Generator
               </Button>
             </CardContent>
           </Card>
