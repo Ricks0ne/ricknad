@@ -1,21 +1,29 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Database, 
+  MessageSquare,
   Link as LinkIcon, 
   Wallet as WalletIcon,
-  MessageSquare,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { useWeb3 } from '../web3/Web3Provider';
 import { Button } from '@/components/ui/button';
 import { formatAddress } from '@/utils/blockchain';
 import { MONAD_TESTNET } from '@/config/monad';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const location = useLocation();
   const { account, connectWallet, disconnectWallet, isConnected, isConnecting } = useWeb3();
+  const isMobile = useIsMobile();
 
   const navItems = [
     {
@@ -35,12 +43,21 @@ const Sidebar: React.FC = () => {
     },
   ];
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="bg-monad-dark text-monad-light h-screen w-64 fixed right-0 flex flex-col py-6 shadow-lg overflow-y-auto">
+    <div className="bg-monad-dark text-monad-light h-screen w-64 flex flex-col py-6 shadow-lg overflow-y-auto">
+      {isMobile && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 text-white hover:text-monad-accent"
+          onClick={onClose}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      )}
+
       <div className="px-4 mb-8">
         <h2 className="text-2xl font-bold text-monad-accent">Ricknad</h2>
         <p className="text-sm text-gray-400">Monad Testnet Explorer</p>
@@ -78,6 +95,7 @@ const Sidebar: React.FC = () => {
             <li key={item.path}>
               <Link
                 to={item.path}
+                onClick={isMobile ? onClose : undefined}
                 className={cn(
                   "flex items-center space-x-3 px-4 py-3 rounded-md transition-colors",
                   isActive(item.path)
