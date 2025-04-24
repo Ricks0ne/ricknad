@@ -30,7 +30,7 @@ const MonadMetrics = () => {
       const timeDiff = latestBlock.timestamp - prevBlock.timestamp;
       const txCount = latestBlock.transactions.length;
       
-      return txCount / timeDiff;
+      return timeDiff > 0 ? txCount / timeDiff : 0;
     },
     refetchInterval: 5000,
   });
