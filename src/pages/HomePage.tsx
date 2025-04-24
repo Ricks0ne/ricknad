@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/
 import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import MonadMetrics from "@/components/dashboard/MonadMetrics";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -177,6 +179,8 @@ const HomePage: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+          
+          <MonadMetrics />
         </div>
       )}
     </div>
