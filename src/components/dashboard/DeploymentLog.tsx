@@ -5,12 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Database } from "lucide-react";
 
 const DeploymentLog = () => {
-  // Mock query to simulate fetching deployment count
-  // In a real app, this would fetch from a backend
   const { data: deploymentCount } = useQuery({
     queryKey: ['deployments-count'],
     queryFn: async () => {
       // Simulate API call with mock data
+      // In a real app, this would fetch the actual number of successful
+      // contract deployments after "Contract Deployed Successfully!" message
       const mockCount = 42; // This would be replaced with actual deployment count
       return mockCount;
     },
@@ -23,7 +23,7 @@ const DeploymentLog = () => {
         <CardTitle className="text-md font-medium">
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4 text-monad-accent" />
-            Total Deployments
+            Total Deployments on Ricknad
           </div>
         </CardTitle>
       </CardHeader>
