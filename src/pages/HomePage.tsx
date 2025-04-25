@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { Transaction } from "@/types/blockchain";
 import { MONAD_TESTNET } from "@/config/monad";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import MonadMetrics from "@/components/dashboard/MonadMetrics";
+import DeploymentLog from "@/components/dashboard/DeploymentLog";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -180,7 +180,14 @@ const HomePage: React.FC = () => {
             </CardContent>
           </Card>
           
-          <MonadMetrics />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <MonadMetrics />
+            </div>
+            <div className="lg:col-span-1">
+              <DeploymentLog />
+            </div>
+          </div>
         </div>
       )}
     </div>
