@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,8 +32,6 @@ const ChatInterface: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(true);
   const [currentContract, setCurrentContract] = useState<{
     code: string;
     abi: any[] | null;
@@ -45,12 +42,6 @@ const ChatInterface: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('openai_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      setShowApiKeyDialog(false);
-    }
-
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
@@ -64,19 +55,8 @@ const ChatInterface: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleApiKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('openai_api_key', apiKey);
-    setShowApiKeyDialog(false);
-    toast.success("API key saved successfully!");
-  };
-
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || !apiKey) {
-      if (!apiKey) {
-        setShowApiKeyDialog(true);
-        toast.error("Please provide your OpenAI API key first");
-      }
+    if (!inputValue.trim()) {
       return;
     }
     
@@ -92,14 +72,13 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://api.supabase.co/functions/v1/ai-chat', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          model: 'gpt-4-turbo-preview',
           messages: [
             {
               role: 'system',
@@ -135,21 +114,17 @@ const ChatInterface: React.FC = () => {
               role: 'user',
               content: inputValue
             }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
+          ]
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
+        throw new Error(`API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
 
-      // Check if the response contains a contract
       if (aiResponse.includes('```solidity')) {
         const contractCode = aiResponse.split('```solidity')[1].split('```')[0].trim();
         const explanation = aiResponse.replace(/```solidity[\s\S]*```/, '').trim();
@@ -180,13 +155,12 @@ const ChatInterface: React.FC = () => {
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      toast.error(`Failed to get AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error('Failed to get AI response. Please try again.');
       
-      // Add an error message to the chat
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: "I'm sorry, there was an error processing your request. Please check your API key and try again.",
+        content: "I'm sorry, there was an error processing your request. Please try again.",
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -421,33 +395,6 @@ const ChatInterface: React.FC = () => {
           Generate smart contracts & ask Monad AI anything
         </p>
       </div>
-
-      <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enter OpenAI API Key</DialogTitle>
-            <DialogDescription>
-              To use the AI features, please enter your OpenAI API key. This will be stored locally in your browser.
-              <p className="mt-2 text-sm text-amber-600">
-                For better security, we recommend using Supabase Edge Functions to store and use your API key.
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleApiKeySubmit} className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Key className="w-4 h-4" />
-              <Input
-                type="password"
-                placeholder="sk-..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit">Save API Key</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {!isConnected ? (
         <Card className="mb-6 animate-scale-in">
