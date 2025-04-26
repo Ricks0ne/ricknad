@@ -5,13 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileCode, Loader2, Copy, ExternalLink, Key, Code, Zap, Rocket } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileCode, Loader2, Copy, ExternalLink, Rocket } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
-import { MONAD_TESTNET } from "@/config/monad";
+import { MONAD_TESTNET, DEFAULT_CONTRACT_TEMPLATE } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
 import { toast } from "sonner";
-import { createClient } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -25,16 +24,6 @@ interface Message {
     deployedAddress?: string;
     deploymentTx?: string;
   };
-}
-
-// Ensure we have values for Supabase URL and key to prevent the "supabaseUrl is required" error
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Create supabase client only if both URL and key are defined
-let supabase: ReturnType<typeof createClient> | null = null;
-if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 const ChatInterface: React.FC = () => {
@@ -53,24 +42,48 @@ const ChatInterface: React.FC = () => {
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Mock explanations from Monad documentation
+  const explanations = {
+    "what is monad": {
+      content: "Monad is a high-performance Layer 1 blockchain designed for maximum performance and decentralization. It features a specialized transaction processing architecture that allows for parallel execution of smart contracts, enabling much higher throughput compared to traditional blockchain architectures.",
+      sources: ["https://docs.monad.xyz/overview"]
+    },
+    "how fast is monad": {
+      content: "Monad delivers high throughput and low latency. It can process thousands of transactions per second with sub-second finality, thanks to its parallel execution model and optimized architecture.",
+      sources: ["https://docs.monad.xyz/overview"]
+    },
+    "what language does monad use": {
+      content: "Monad is fully EVM-compatible, which means it supports Solidity, the same programming language used by Ethereum. This allows developers to easily port their existing Ethereum dApps to Monad without changing the code.",
+      sources: ["https://docs.monad.xyz/developers/guide"]
+    },
+    "how does gas work": {
+      content: "Gas in Monad works similarly to Ethereum. It's a unit that measures computational effort required to execute operations. Each operation has a fixed gas cost, and users specify a gas price they're willing to pay. Monad's parallel execution model helps optimize gas usage, leading to lower transaction costs compared to traditional blockchains.",
+      sources: ["https://docs.monad.xyz/developers/guide"]
+    },
+    "default": {
+      content: "Monad is a high-performance Layer 1 blockchain built from the ground up for scalability without sacrificing decentralization. It features parallel transaction execution, EVM compatibility for easy migration of Ethereum dApps, and a novel consensus mechanism designed for high throughput and security.",
+      sources: ["https://docs.monad.xyz/overview", "https://www.monad.xyz/blog"]
+    }
+  };
+
+  // Add a welcome message when the component mounts
   useEffect(() => {
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: "Welcome to Ricknad's AI! I can help you generate smart contracts and answer questions about Monad. What would you like to know?",
+      content: "Welcome to Ricknad's AI! Ask me anything about Monad or request me to generate a smart contract for you. I can answer your questions and create custom smart contracts based on your specifications.",
       timestamp: Date.now()
     };
     setMessages([welcomeMessage]);
   }, []);
 
+  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) {
-      return;
-    }
+    if (!inputValue.trim()) return;
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -84,98 +97,20 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
-      if (!supabase) {
-        throw new Error("Supabase client is not initialized. Please check your environment variables.");
-      }
-
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          messages: [
-            {
-              role: 'system',
-              content: `You are RickAI, a specialized AI assistant focused on Monad blockchain development and smart contracts.
-              
-              Your capabilities:
-              - Generate high-quality, well-commented Solidity smart contracts
-              - Provide detailed technical information about Monad blockchain
-              - Answer questions about blockchain development best practices
-              - Assist with debugging and optimizing smart contracts
-              - Explain complex blockchain concepts in simple terms
-              
-              When users ask for contract generation:
-              1. Create appropriate, well-structured Solidity contracts
-              2. Include helpful comments explaining key functionality
-              3. Consider gas optimization best practices
-              4. Implement proper security measures like reentrancy guards when appropriate
-              5. Always wrap contract code in \`\`\`solidity code here \`\`\` markdown blocks
-              
-              For Monad-specific questions:
-              - Provide accurate technical information about Monad's architecture, performance, and features
-              - Compare with other blockchains when relevant
-              - Explain Monad's benefits for developers and users
-              
-              Always stay focused on providing the most helpful and accurate blockchain development assistance.
-              
-              Current context: User is using Ricknad, a Monad-focused development platform with contract generation, compilation, and deployment capabilities.`
-            },
-            ...messages.map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            {
-              role: 'user',
-              content: inputValue
-            }
-          ]
-        },
-      });
-
-      if (error) {
-        throw new Error(`API error: ${error.message}`);
-      }
-
-      if (!data) {
-        throw new Error('No data received from AI');
-      }
-
-      const aiResponse = data.content;
-
-      if (aiResponse.includes('```solidity')) {
-        const contractCode = aiResponse.split('```solidity')[1].split('```')[0].trim();
-        const explanation = aiResponse.replace(/```solidity[\s\S]*```/, '').trim();
-        
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: explanation || "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
-          timestamp: Date.now(),
-          contractData: {
-            code: contractCode
-          }
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setCurrentContract({
-          code: contractCode,
-          abi: null,
-          bytecode: null
-        });
-      } else {
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      }
-    } catch (error: any) {
-      console.error('Error processing message:', error);
-      toast.error(error.message || 'Failed to get AI response. Please try again.');
+      // Check if the message is asking for an explanation or a contract
+      const normalizedInput = inputValue.toLowerCase().trim();
       
+      if (isContractRequest(normalizedInput)) {
+        await handleContractRequest(normalizedInput, userMessage.id);
+      } else {
+        await handleExplanationRequest(normalizedInput, userMessage.id);
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: `Error: ${error.message || "There was an error processing your request. Please try again."}`,
+        content: "I'm sorry, I encountered an error processing your request. Please try again.",
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -184,6 +119,225 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  // Function to determine if a message is asking for a smart contract
+  const isContractRequest = (message: string): boolean => {
+    const contractKeywords = [
+      'create contract', 'generate contract', 'make contract', 
+      'solidity', 'smart contract', 'erc20', 'erc721', 'erc1155',
+      'nft contract', 'token contract', 'write contract', 'code', 
+      'implement contract', 'develop contract'
+    ];
+    
+    return contractKeywords.some(keyword => message.includes(keyword));
+  };
+
+  // Handle explanation requests
+  const handleExplanationRequest = async (message: string, messageId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Find the most relevant explanation
+    let result;
+    for (const [key, value] of Object.entries(explanations)) {
+      if (message.includes(key)) {
+        result = value;
+        break;
+      }
+    }
+    
+    // Use default if no match found
+    if (!result) {
+      result = explanations.default;
+    }
+    
+    // Format the answer with sources
+    const formattedAnswer = `
+${result.content}
+
+Sources:
+${result.sources.map(source => `- [${source}](${source})`).join('\n')}
+    `;
+    
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: formattedAnswer,
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
+  };
+
+  // Handle contract generation requests
+  const handleContractRequest = async (message: string, messageId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Generate a contract based on the message
+    const contractCode = generateContract(message);
+    
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
+      timestamp: Date.now(),
+      contractData: {
+        code: contractCode
+      }
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
+    setCurrentContract({
+      code: contractCode,
+      abi: null,
+      bytecode: null
+    });
+  };
+
+  // Generate contract code based on the user's request
+  const generateContract = (prompt: string): string => {
+    const seed = Math.floor(Math.random() * 10000);
+    const currentDate = new Date().toISOString();
+    const promptLC = prompt.toLowerCase();
+    
+    let contractName = "GeneratedContract";
+    if (promptLC.includes("erc20") || promptLC.includes("token")) {
+      contractName = "RickToken";
+    } else if (promptLC.includes("erc721") || promptLC.includes("nft")) {
+      contractName = "RickNFT";
+    }
+    
+    // Pattern 1: NFT with minting
+    if (
+      (promptLC.includes("nft") && promptLC.includes("mint")) ||
+      promptLC.includes("erc721")
+    ) {
+      // ERC721 NFT contract with minting
+      return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title ${contractName}
+ * @dev ERC721 NFT Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ERC721, Ownable {
+    uint256 public nextTokenId;
+
+    constructor() ERC721("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {}
+
+    function mint(address to) public onlyOwner {
+        _safeMint(to, nextTokenId);
+        nextTokenId++;
+    }
+}`;
+    }
+    // Pattern 2: ERC20 token with transfer
+    else if (
+      ((promptLC.includes("erc20") || promptLC.includes("token")) && promptLC.includes("transfer")) ||
+      promptLC.includes("fungible")
+    ) {
+      return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title ${contractName}
+ * @dev ERC20 Token Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ERC20, Ownable {
+    constructor(uint256 initialSupply) ERC20("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {
+        _mint(msg.sender, initialSupply);
+    }
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+}`;
+    }
+    // Add more patterns here...
+    
+    // Default "fun" contract (fallback to previous logic)
+    const words = prompt.split(/\s+/).filter(word => word.length > 3);
+    const varName1 = words.length > 0 ? words[0].toLowerCase() : 'data';
+    const varName2 = words.length > 1 ? words[1].toLowerCase() : 'value';
+    const eventName = words.length > 2 ? 
+      words[2].charAt(0).toUpperCase() + words[2].slice(1) + 'Updated' : 
+      'DataUpdated';
+    
+    return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+/**
+ * @title ${contractName}
+ * @dev Generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} {
+    // State variables
+    address public owner;
+    uint256 public ${varName1}Count;
+    string public ${varName2}Text;
+    bool public isActive;
+    
+    // Events
+    event ${eventName}(address indexed user, uint256 ${varName1}Count, string ${varName2}Text);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    
+    // Constructor
+    constructor() {
+        owner = msg.sender;
+        ${varName1}Count = ${seed % 100};
+        ${varName2}Text = "Initial value from Ricknad Generator #${seed}";
+        isActive = true;
+    }
+    
+    // Modifiers
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not authorized: owner only");
+        _;
+    }
+    
+    modifier whenActive() {
+        require(isActive, "Contract is not active");
+        _;
+    }
+    
+    // Functions
+    function update${varName1.charAt(0).toUpperCase() + varName1.slice(1)}(uint256 _value) public whenActive {
+        ${varName1}Count = _value;
+        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
+    }
+    
+    function set${varName2.charAt(0).toUpperCase() + varName2.slice(1)}(string memory _text) public onlyOwner whenActive {
+        ${varName2}Text = _text;
+        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
+    }
+    
+    function getContractData() public view returns (address, uint256, string memory, bool) {
+        return (owner, ${varName1}Count, ${varName2}Text, isActive);
+    }
+    
+    function toggleActive() public onlyOwner {
+        isActive = !isActive;
+    }
+    
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0), "New owner cannot be zero address");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+}`;
+  };
+
+  // Compile the current contract
   const compileContract = async () => {
     if (!currentContract?.code) return;
     
@@ -290,6 +444,7 @@ const ChatInterface: React.FC = () => {
         bytecode: validBytecodeSample
       });
       
+      // Add a compilation success message
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -308,6 +463,7 @@ const ChatInterface: React.FC = () => {
       console.error('Error compiling contract:', err);
       toast.error('Compilation failed');
       
+      // Add a compilation error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -321,6 +477,7 @@ const ChatInterface: React.FC = () => {
     }
   };
   
+  // Deploy the current contract
   const deploySmartContract = async () => {
     if (!currentContract?.abi || !currentContract?.bytecode || !signer) {
       toast.error("Missing required data for deployment");
@@ -351,6 +508,7 @@ const ChatInterface: React.FC = () => {
         deploymentTx: result.deploymentTx
       });
       
+      // Add a deployment success message
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -371,6 +529,7 @@ const ChatInterface: React.FC = () => {
       console.error('Error deploying contract:', err);
       toast.error(err.message || 'Deployment failed');
       
+      // Add a deployment error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -400,24 +559,11 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad Rick <Rocket className="inline-block ml-1" /></h1>
+        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad Rick 👨‍🔬</h1>
         <p className="text-lg text-gray-600 italic">
           Generate smart contracts & ask Monad AI anything
         </p>
       </div>
-
-      {!SUPABASE_URL || !SUPABASE_ANON_KEY ? (
-        <Card className="mb-6 animate-scale-in">
-          <CardContent className="pt-6">
-            <Alert className="border-red-300 bg-red-50">
-              <AlertDescription className="text-red-800">
-                <p className="font-semibold">Configuration Error</p>
-                <p className="mt-1">Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.</p>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      ) : null}
 
       {!isConnected ? (
         <Card className="mb-6 animate-scale-in">
@@ -442,7 +588,7 @@ const ChatInterface: React.FC = () => {
         <Card className="flex-1 animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Zap className="mr-2 h-5 w-5 text-monad-accent" />
+              <Rocket className="mr-2 h-5 w-5 text-monad-accent" />
               Monad AI Chat
             </CardTitle>
             <CardDescription>
@@ -595,12 +741,11 @@ const ChatInterface: React.FC = () => {
                     handleSendMessage();
                   }
                 }}
-                disabled={!SUPABASE_URL || !SUPABASE_ANON_KEY}
               />
               <Button 
                 className="bg-monad-primary hover:bg-monad-accent hover:text-black"
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isTyping || !SUPABASE_URL || !SUPABASE_ANON_KEY}
+                disabled={!inputValue.trim() || isTyping}
               >
                 {isTyping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -627,7 +772,6 @@ const ChatInterface: React.FC = () => {
                     onClick={() => {
                       setInputValue(suggestion);
                     }}
-                    disabled={!SUPABASE_URL || !SUPABASE_ANON_KEY}
                   >
                     {suggestion}
                   </Button>
