@@ -4,12 +4,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileCode, Loader2, Copy, ExternalLink, Key, Code, Zap } from "lucide-react";
+import { FileCode, Loader2, Copy, ExternalLink, Key, Code, Zap, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { MONAD_TESTNET } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
 import { toast } from "sonner";
+import { createClient } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -24,6 +25,11 @@ interface Message {
     deploymentTx?: string;
   };
 }
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 const ChatInterface: React.FC = () => {
   const { account, signer, isConnected, connectWallet } = useWeb3();
@@ -72,13 +78,8 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
-      const response = await fetch('https://api.supabase.co/functions/v1/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
           messages: [
             {
               role: 'system',
@@ -96,6 +97,7 @@ const ChatInterface: React.FC = () => {
               2. Include helpful comments explaining key functionality
               3. Consider gas optimization best practices
               4. Implement proper security measures like reentrancy guards when appropriate
+              5. Always wrap contract code in \`\`\`solidity code here \`\`\` markdown blocks
               
               For Monad-specific questions:
               - Provide accurate technical information about Monad's architecture, performance, and features
@@ -115,15 +117,18 @@ const ChatInterface: React.FC = () => {
               content: inputValue
             }
           ]
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+      if (error) {
+        throw new Error(`API error: ${error.message}`);
       }
 
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
+      if (!data) {
+        throw new Error('No data received from AI');
+      }
+
+      const aiResponse = data.content;
 
       if (aiResponse.includes('```solidity')) {
         const contractCode = aiResponse.split('```solidity')[1].split('```')[0].trim();
@@ -153,14 +158,14 @@ const ChatInterface: React.FC = () => {
         };
         setMessages(prev => [...prev, assistantMessage]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing message:', error);
       toast.error('Failed to get AI response. Please try again.');
       
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: "I'm sorry, there was an error processing your request. Please try again.",
+        content: `Error: ${error.message || "There was an error processing your request. Please try again."}`,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -275,7 +280,6 @@ const ChatInterface: React.FC = () => {
         bytecode: validBytecodeSample
       });
       
-      // Add a compilation success message
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -294,7 +298,6 @@ const ChatInterface: React.FC = () => {
       console.error('Error compiling contract:', err);
       toast.error('Compilation failed');
       
-      // Add a compilation error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -308,7 +311,6 @@ const ChatInterface: React.FC = () => {
     }
   };
   
-  // Deploy the current contract
   const deploySmartContract = async () => {
     if (!currentContract?.abi || !currentContract?.bytecode || !signer) {
       toast.error("Missing required data for deployment");
@@ -339,7 +341,6 @@ const ChatInterface: React.FC = () => {
         deploymentTx: result.deploymentTx
       });
       
-      // Add a deployment success message
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -360,7 +361,6 @@ const ChatInterface: React.FC = () => {
       console.error('Error deploying contract:', err);
       toast.error(err.message || 'Deployment failed');
       
-      // Add a deployment error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -390,7 +390,7 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad Rick 👨‍🔬</h1>
+        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad Rick <Rocket className="inline-block ml-1" /></h1>
         <p className="text-lg text-gray-600 italic">
           Generate smart contracts & ask Monad AI anything
         </p>
