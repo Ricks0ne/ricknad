@@ -1,14 +1,13 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileCode, Loader2, Copy, ExternalLink, Rocket } from "lucide-react";
+import { FileCode, Loader2, Copy, ExternalLink, Key } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useWeb3 } from "@/components/web3/Web3Provider";
-import { MONAD_TESTNET, DEFAULT_CONTRACT_TEMPLATE } from "@/config/monad";
+import { MONAD_TESTNET } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
 import { toast } from "sonner";
 
@@ -33,6 +32,8 @@ const ChatInterface: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(true);
   const [currentContract, setCurrentContract] = useState<{
     code: string;
     abi: any[] | null;
@@ -42,48 +43,34 @@ const ChatInterface: React.FC = () => {
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock explanations from Monad documentation
-  const explanations = {
-    "what is monad": {
-      content: "Monad is a high-performance Layer 1 blockchain designed for maximum performance and decentralization. It features a specialized transaction processing architecture that allows for parallel execution of smart contracts, enabling much higher throughput compared to traditional blockchain architectures.",
-      sources: ["https://docs.monad.xyz/overview"]
-    },
-    "how fast is monad": {
-      content: "Monad delivers high throughput and low latency. It can process thousands of transactions per second with sub-second finality, thanks to its parallel execution model and optimized architecture.",
-      sources: ["https://docs.monad.xyz/overview"]
-    },
-    "what language does monad use": {
-      content: "Monad is fully EVM-compatible, which means it supports Solidity, the same programming language used by Ethereum. This allows developers to easily port their existing Ethereum dApps to Monad without changing the code.",
-      sources: ["https://docs.monad.xyz/developers/guide"]
-    },
-    "how does gas work": {
-      content: "Gas in Monad works similarly to Ethereum. It's a unit that measures computational effort required to execute operations. Each operation has a fixed gas cost, and users specify a gas price they're willing to pay. Monad's parallel execution model helps optimize gas usage, leading to lower transaction costs compared to traditional blockchains.",
-      sources: ["https://docs.monad.xyz/developers/guide"]
-    },
-    "default": {
-      content: "Monad is a high-performance Layer 1 blockchain built from the ground up for scalability without sacrificing decentralization. It features parallel transaction execution, EVM compatibility for easy migration of Ethereum dApps, and a novel consensus mechanism designed for high throughput and security.",
-      sources: ["https://docs.monad.xyz/overview", "https://www.monad.xyz/blog"]
-    }
-  };
-
-  // Add a welcome message when the component mounts
   useEffect(() => {
+    const savedApiKey = localStorage.getItem('openai_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setShowApiKeyDialog(false);
+    }
+
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: "Welcome to Ricknad's AI! Ask me anything about Monad or request me to generate a smart contract for you. I can answer your questions and create custom smart contracts based on your specifications.",
+      content: "Welcome to Ricknad's AI! I can help you generate smart contracts and answer questions about Monad. What would you like to know?",
       timestamp: Date.now()
     };
     setMessages([welcomeMessage]);
   }, []);
 
-  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleApiKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('openai_api_key', apiKey);
+    setShowApiKeyDialog(false);
+  };
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !apiKey) return;
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -97,247 +84,78 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
-      // Check if the message is asking for an explanation or a contract
-      const normalizedInput = inputValue.toLowerCase().trim();
-      
-      if (isContractRequest(normalizedInput)) {
-        await handleContractRequest(normalizedInput, userMessage.id);
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an AI assistant specialized in Monad blockchain and smart contract development. 
+              You help users by providing accurate information about Monad and generating smart contracts.
+              When users ask for contract generation, create appropriate Solidity contracts.
+              For questions about Monad, provide detailed technical answers.
+              Current context: User is using Ricknad, a Monad-focused development platform.`
+            },
+            ...messages.map(m => ({
+              role: m.role,
+              content: m.content
+            })),
+            {
+              role: 'user',
+              content: inputValue
+            }
+          ],
+          temperature: 0.7
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      // Check if the response contains a contract
+      if (aiResponse.includes('```solidity')) {
+        const contractCode = aiResponse.split('```solidity')[1].split('```')[0].trim();
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
+          timestamp: Date.now(),
+          contractData: {
+            code: contractCode
+          }
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setCurrentContract({
+          code: contractCode,
+          abi: null,
+          bytecode: null
+        });
       } else {
-        await handleExplanationRequest(normalizedInput, userMessage.id);
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: aiResponse,
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "I'm sorry, I encountered an error processing your request. Please try again.",
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      toast.error('Failed to get AI response. Please check your API key and try again.');
     } finally {
       setIsTyping(false);
     }
   };
 
-  // Function to determine if a message is asking for a smart contract
-  const isContractRequest = (message: string): boolean => {
-    const contractKeywords = [
-      'create contract', 'generate contract', 'make contract', 
-      'solidity', 'smart contract', 'erc20', 'erc721', 'erc1155',
-      'nft contract', 'token contract', 'write contract', 'code', 
-      'implement contract', 'develop contract'
-    ];
-    
-    return contractKeywords.some(keyword => message.includes(keyword));
-  };
-
-  // Handle explanation requests
-  const handleExplanationRequest = async (message: string, messageId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Find the most relevant explanation
-    let result;
-    for (const [key, value] of Object.entries(explanations)) {
-      if (message.includes(key)) {
-        result = value;
-        break;
-      }
-    }
-    
-    // Use default if no match found
-    if (!result) {
-      result = explanations.default;
-    }
-    
-    // Format the answer with sources
-    const formattedAnswer = `
-${result.content}
-
-Sources:
-${result.sources.map(source => `- [${source}](${source})`).join('\n')}
-    `;
-    
-    const assistantMessage: Message = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: formattedAnswer,
-      timestamp: Date.now()
-    };
-    
-    setMessages(prev => [...prev, assistantMessage]);
-  };
-
-  // Handle contract generation requests
-  const handleContractRequest = async (message: string, messageId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate a contract based on the message
-    const contractCode = generateContract(message);
-    
-    const assistantMessage: Message = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
-      timestamp: Date.now(),
-      contractData: {
-        code: contractCode
-      }
-    };
-    
-    setMessages(prev => [...prev, assistantMessage]);
-    setCurrentContract({
-      code: contractCode,
-      abi: null,
-      bytecode: null
-    });
-  };
-
-  // Generate contract code based on the user's request
-  const generateContract = (prompt: string): string => {
-    const seed = Math.floor(Math.random() * 10000);
-    const currentDate = new Date().toISOString();
-    const promptLC = prompt.toLowerCase();
-    
-    let contractName = "GeneratedContract";
-    if (promptLC.includes("erc20") || promptLC.includes("token")) {
-      contractName = "RickToken";
-    } else if (promptLC.includes("erc721") || promptLC.includes("nft")) {
-      contractName = "RickNFT";
-    }
-    
-    // Pattern 1: NFT with minting
-    if (
-      (promptLC.includes("nft") && promptLC.includes("mint")) ||
-      promptLC.includes("erc721")
-    ) {
-      // ERC721 NFT contract with minting
-      return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * @title ${contractName}
- * @dev ERC721 NFT Contract auto-generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} is ERC721, Ownable {
-    uint256 public nextTokenId;
-
-    constructor() ERC721("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {}
-
-    function mint(address to) public onlyOwner {
-        _safeMint(to, nextTokenId);
-        nextTokenId++;
-    }
-}`;
-    }
-    // Pattern 2: ERC20 token with transfer
-    else if (
-      ((promptLC.includes("erc20") || promptLC.includes("token")) && promptLC.includes("transfer")) ||
-      promptLC.includes("fungible")
-    ) {
-      return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * @title ${contractName}
- * @dev ERC20 Token Contract auto-generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} is ERC20, Ownable {
-    constructor(uint256 initialSupply) ERC20("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {
-        _mint(msg.sender, initialSupply);
-    }
-
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
-    }
-}`;
-    }
-    // Add more patterns here...
-    
-    // Default "fun" contract (fallback to previous logic)
-    const words = prompt.split(/\s+/).filter(word => word.length > 3);
-    const varName1 = words.length > 0 ? words[0].toLowerCase() : 'data';
-    const varName2 = words.length > 1 ? words[1].toLowerCase() : 'value';
-    const eventName = words.length > 2 ? 
-      words[2].charAt(0).toUpperCase() + words[2].slice(1) + 'Updated' : 
-      'DataUpdated';
-    
-    return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-/**
- * @title ${contractName}
- * @dev Generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} {
-    // State variables
-    address public owner;
-    uint256 public ${varName1}Count;
-    string public ${varName2}Text;
-    bool public isActive;
-    
-    // Events
-    event ${eventName}(address indexed user, uint256 ${varName1}Count, string ${varName2}Text);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    
-    // Constructor
-    constructor() {
-        owner = msg.sender;
-        ${varName1}Count = ${seed % 100};
-        ${varName2}Text = "Initial value from Ricknad Generator #${seed}";
-        isActive = true;
-    }
-    
-    // Modifiers
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized: owner only");
-        _;
-    }
-    
-    modifier whenActive() {
-        require(isActive, "Contract is not active");
-        _;
-    }
-    
-    // Functions
-    function update${varName1.charAt(0).toUpperCase() + varName1.slice(1)}(uint256 _value) public whenActive {
-        ${varName1}Count = _value;
-        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
-    }
-    
-    function set${varName2.charAt(0).toUpperCase() + varName2.slice(1)}(string memory _text) public onlyOwner whenActive {
-        ${varName2}Text = _text;
-        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
-    }
-    
-    function getContractData() public view returns (address, uint256, string memory, bool) {
-        return (owner, ${varName1}Count, ${varName2}Text, isActive);
-    }
-    
-    function toggleActive() public onlyOwner {
-        isActive = !isActive;
-    }
-    
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "New owner cannot be zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}`;
-  };
-
-  // Compile the current contract
   const compileContract = async () => {
     if (!currentContract?.code) return;
     
@@ -564,6 +382,30 @@ contract ${contractName} {
           Generate smart contracts & ask Monad AI anything
         </p>
       </div>
+
+      <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter OpenAI API Key</DialogTitle>
+            <DialogDescription>
+              To use the AI features, please enter your OpenAI API key. This will be stored locally in your browser.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleApiKeySubmit} className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Key className="w-4 h-4" />
+              <Input
+                type="password"
+                placeholder="sk-..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit">Save API Key</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {!isConnected ? (
         <Card className="mb-6 animate-scale-in">
