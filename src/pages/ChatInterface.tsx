@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileCode, Loader2, Copy, ExternalLink, Key } from "lucide-react";
+import { FileCode, Loader2, Copy, ExternalLink, Key, Code, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { MONAD_TESTNET } from "@/config/monad";
@@ -67,10 +68,17 @@ const ChatInterface: React.FC = () => {
     e.preventDefault();
     localStorage.setItem('openai_api_key', apiKey);
     setShowApiKeyDialog(false);
+    toast.success("API key saved successfully!");
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || !apiKey) return;
+    if (!inputValue.trim() || !apiKey) {
+      if (!apiKey) {
+        setShowApiKeyDialog(true);
+        toast.error("Please provide your OpenAI API key first");
+      }
+      return;
+    }
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -95,11 +103,29 @@ const ChatInterface: React.FC = () => {
           messages: [
             {
               role: 'system',
-              content: `You are an AI assistant specialized in Monad blockchain and smart contract development. 
-              You help users by providing accurate information about Monad and generating smart contracts.
-              When users ask for contract generation, create appropriate Solidity contracts.
-              For questions about Monad, provide detailed technical answers.
-              Current context: User is using Ricknad, a Monad-focused development platform.`
+              content: `You are RickAI, a specialized AI assistant focused on Monad blockchain development and smart contracts.
+              
+              Your capabilities:
+              - Generate high-quality, well-commented Solidity smart contracts
+              - Provide detailed technical information about Monad blockchain
+              - Answer questions about blockchain development best practices
+              - Assist with debugging and optimizing smart contracts
+              - Explain complex blockchain concepts in simple terms
+              
+              When users ask for contract generation:
+              1. Create appropriate, well-structured Solidity contracts
+              2. Include helpful comments explaining key functionality
+              3. Consider gas optimization best practices
+              4. Implement proper security measures like reentrancy guards when appropriate
+              
+              For Monad-specific questions:
+              - Provide accurate technical information about Monad's architecture, performance, and features
+              - Compare with other blockchains when relevant
+              - Explain Monad's benefits for developers and users
+              
+              Always stay focused on providing the most helpful and accurate blockchain development assistance.
+              
+              Current context: User is using Ricknad, a Monad-focused development platform with contract generation, compilation, and deployment capabilities.`
             },
             ...messages.map(m => ({
               role: m.role,
@@ -110,12 +136,14 @@ const ChatInterface: React.FC = () => {
               content: inputValue
             }
           ],
-          temperature: 0.7
+          temperature: 0.7,
+          max_tokens: 2000
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json();
+        throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
       }
 
       const data = await response.json();
@@ -124,10 +152,12 @@ const ChatInterface: React.FC = () => {
       // Check if the response contains a contract
       if (aiResponse.includes('```solidity')) {
         const contractCode = aiResponse.split('```solidity')[1].split('```')[0].trim();
+        const explanation = aiResponse.replace(/```solidity[\s\S]*```/, '').trim();
+        
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
+          content: explanation || "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
           timestamp: Date.now(),
           contractData: {
             code: contractCode
@@ -150,7 +180,16 @@ const ChatInterface: React.FC = () => {
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      toast.error('Failed to get AI response. Please check your API key and try again.');
+      toast.error(`Failed to get AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Add an error message to the chat
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "I'm sorry, there was an error processing your request. Please check your API key and try again.",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
@@ -389,6 +428,9 @@ const ChatInterface: React.FC = () => {
             <DialogTitle>Enter OpenAI API Key</DialogTitle>
             <DialogDescription>
               To use the AI features, please enter your OpenAI API key. This will be stored locally in your browser.
+              <p className="mt-2 text-sm text-amber-600">
+                For better security, we recommend using Supabase Edge Functions to store and use your API key.
+              </p>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleApiKeySubmit} className="space-y-4">
@@ -430,7 +472,7 @@ const ChatInterface: React.FC = () => {
         <Card className="flex-1 animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Rocket className="mr-2 h-5 w-5 text-monad-accent" />
+              <Zap className="mr-2 h-5 w-5 text-monad-accent" />
               Monad AI Chat
             </CardTitle>
             <CardDescription>
