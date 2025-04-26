@@ -27,10 +27,15 @@ interface Message {
   };
 }
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+// Ensure we have values for Supabase URL and key to prevent the "supabaseUrl is required" error
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Create supabase client only if both URL and key are defined
+let supabase: ReturnType<typeof createClient> | null = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 const ChatInterface: React.FC = () => {
   const { account, signer, isConnected, connectWallet } = useWeb3();
@@ -79,6 +84,10 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
+      if (!supabase) {
+        throw new Error("Supabase client is not initialized. Please check your environment variables.");
+      }
+
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: {
           messages: [
@@ -161,7 +170,7 @@ const ChatInterface: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error processing message:', error);
-      toast.error('Failed to get AI response. Please try again.');
+      toast.error(error.message || 'Failed to get AI response. Please try again.');
       
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
@@ -397,6 +406,19 @@ const ChatInterface: React.FC = () => {
         </p>
       </div>
 
+      {!SUPABASE_URL || !SUPABASE_ANON_KEY ? (
+        <Card className="mb-6 animate-scale-in">
+          <CardContent className="pt-6">
+            <Alert className="border-red-300 bg-red-50">
+              <AlertDescription className="text-red-800">
+                <p className="font-semibold">Configuration Error</p>
+                <p className="mt-1">Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.</p>
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {!isConnected ? (
         <Card className="mb-6 animate-scale-in">
           <CardContent className="pt-6">
@@ -573,11 +595,12 @@ const ChatInterface: React.FC = () => {
                     handleSendMessage();
                   }
                 }}
+                disabled={!SUPABASE_URL || !SUPABASE_ANON_KEY}
               />
               <Button 
                 className="bg-monad-primary hover:bg-monad-accent hover:text-black"
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isTyping}
+                disabled={!inputValue.trim() || isTyping || !SUPABASE_URL || !SUPABASE_ANON_KEY}
               >
                 {isTyping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -604,6 +627,7 @@ const ChatInterface: React.FC = () => {
                     onClick={() => {
                       setInputValue(suggestion);
                     }}
+                    disabled={!SUPABASE_URL || !SUPABASE_ANON_KEY}
                   >
                     {suggestion}
                   </Button>
