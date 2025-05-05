@@ -8,7 +8,8 @@ import {
   Link as LinkIcon, 
   Wallet as WalletIcon,
   ExternalLink,
-  X
+  X,
+  FileCode
 } from 'lucide-react';
 import { useWeb3 } from '../web3/Web3Provider';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
       <div className="px-4 mb-8">
         <h2 className="text-2xl font-bold text-monad-accent">Ricknad</h2>
-        <p className="text-sm text-gray-400">Monad Testnet Explorer</p>
+        <div className="flex items-center mt-1">
+          <FileCode className="h-4 w-4 mr-2 text-monad-accent" />
+          <p className="text-sm text-gray-400">Monad Smart Contracts</p>
+        </div>
       </div>
 
       <div className="px-4 mb-6">
@@ -72,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             </div>
             <Button 
               variant="outline" 
-              className="w-full border-monad-accent text-monad-accent hover:bg-monad-accent hover:text-black"
+              className="w-full border-monad-accent text-monad-accent hover:bg-monad-accent hover:text-black transition-colors"
               onClick={disconnectWallet}
             >
               Disconnect
@@ -80,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </div>
         ) : (
           <Button 
-            className="w-full bg-monad-primary hover:bg-monad-accent hover:text-black"
+            className="w-full bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
             onClick={connectWallet}
             disabled={isConnecting}
           >
@@ -100,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                   "flex items-center space-x-3 px-4 py-3 rounded-md transition-colors",
                   isActive(item.path)
                     ? "bg-monad-primary text-white"
-                    : "text-gray-300 hover:bg-gray-800"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-monad-accent"
                 )}
               >
                 {item.icon}
@@ -111,19 +115,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </ul>
       </nav>
 
-      <div className="mt-auto px-4">
+      <div className="mt-auto px-4 pt-4 border-t border-gray-800">
         <div className="text-sm text-gray-400 mb-1">Monad Testnet</div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 mb-2">
           Chain ID: {MONAD_TESTNET.chainId}
         </div>
-        <a 
-          href="https://x.com/0xFred_" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="flex items-center text-sm text-white hover:text-monad-accent mt-4 transition-colors"
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full text-xs border-monad-accent/30 text-monad-accent"
+          asChild
         >
-          Follow me on X: @0xFred_ <ExternalLink className="ml-1 h-3 w-3" />
-        </a>
+          <a href="https://faucet.monad.xyz/" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3 w-3 mr-2" />
+            Get Testnet Tokens
+          </a>
+        </Button>
       </div>
     </div>
   );

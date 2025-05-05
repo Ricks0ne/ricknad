@@ -6,11 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileCode, Loader2, Copy, ExternalLink, Rocket } from "lucide-react";
+import { 
+  FileCode, 
+  Loader2, 
+  Copy, 
+  ExternalLink, 
+  Rocket, 
+  MessageSquare, 
+  Search 
+} from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
-import { MONAD_TESTNET, DEFAULT_CONTRACT_TEMPLATE } from "@/config/monad";
+import { MONAD_TESTNET } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
+import { generateContract } from "@/utils/contractGenerator";
 import { toast } from "sonner";
+import { DeployedContract, SmartContract } from "@/types/blockchain";
+import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
+import DeployedContractsList from "@/components/contract/DeployedContractsList";
 
 interface Message {
   id: string;
@@ -19,10 +31,12 @@ interface Message {
   timestamp: number;
   contractData?: {
     code?: string;
+    name?: string;
     abi?: any[];
     bytecode?: string;
     deployedAddress?: string;
     deploymentTx?: string;
+    type?: string;
   };
 }
 
@@ -34,12 +48,15 @@ const ChatInterface: React.FC = () => {
   const [isCompiling, setIsCompiling] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [currentContract, setCurrentContract] = useState<{
+    name: string;
     code: string;
+    type?: string;
     abi: any[] | null;
     bytecode: string | null;
     deployedAddress?: string;
     deploymentTx?: string;
   } | null>(null);
+  const [selectedDeployedContract, setSelectedDeployedContract] = useState<DeployedContract | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Mock explanations from Monad documentation
@@ -81,6 +98,19 @@ const ChatInterface: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Load previously deployed contracts
+  useEffect(() => {
+    try {
+      const storedContracts = localStorage.getItem('ricknad_deployed_contracts');
+      if (storedContracts) {
+        const deployedContracts = JSON.parse(storedContracts);
+        // Logic to handle deployed contracts if needed
+      }
+    } catch (error) {
+      console.error('Failed to load deployed contracts:', error);
+    }
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
@@ -125,7 +155,8 @@ const ChatInterface: React.FC = () => {
       'create contract', 'generate contract', 'make contract', 
       'solidity', 'smart contract', 'erc20', 'erc721', 'erc1155',
       'nft contract', 'token contract', 'write contract', 'code', 
-      'implement contract', 'develop contract'
+      'implement contract', 'develop contract', 'staking contract',
+      'governance', 'dao', 'upgradeable', 'upgradable', 'proxy'
     ];
     
     return contractKeywords.some(keyword => message.includes(keyword));
@@ -172,7 +203,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate a contract based on the message
-    const contractCode = generateContract(message);
+    const contractResult = generateContract(message);
     
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
@@ -180,161 +211,20 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
       timestamp: Date.now(),
       contractData: {
-        code: contractCode
+        code: contractResult.code,
+        name: contractResult.name,
+        type: contractResult.type
       }
     };
     
     setMessages(prev => [...prev, assistantMessage]);
     setCurrentContract({
-      code: contractCode,
+      name: contractResult.name,
+      code: contractResult.code,
+      type: contractResult.type,
       abi: null,
       bytecode: null
     });
-  };
-
-  // Generate contract code based on the user's request
-  const generateContract = (prompt: string): string => {
-    const seed = Math.floor(Math.random() * 10000);
-    const currentDate = new Date().toISOString();
-    const promptLC = prompt.toLowerCase();
-    
-    let contractName = "GeneratedContract";
-    if (promptLC.includes("erc20") || promptLC.includes("token")) {
-      contractName = "RickToken";
-    } else if (promptLC.includes("erc721") || promptLC.includes("nft")) {
-      contractName = "RickNFT";
-    }
-    
-    // Pattern 1: NFT with minting
-    if (
-      (promptLC.includes("nft") && promptLC.includes("mint")) ||
-      promptLC.includes("erc721")
-    ) {
-      // ERC721 NFT contract with minting
-      return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * @title ${contractName}
- * @dev ERC721 NFT Contract auto-generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} is ERC721, Ownable {
-    uint256 public nextTokenId;
-
-    constructor() ERC721("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {}
-
-    function mint(address to) public onlyOwner {
-        _safeMint(to, nextTokenId);
-        nextTokenId++;
-    }
-}`;
-    }
-    // Pattern 2: ERC20 token with transfer
-    else if (
-      ((promptLC.includes("erc20") || promptLC.includes("token")) && promptLC.includes("transfer")) ||
-      promptLC.includes("fungible")
-    ) {
-      return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * @title ${contractName}
- * @dev ERC20 Token Contract auto-generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} is ERC20, Ownable {
-    constructor(uint256 initialSupply) ERC20("${contractName}", "${contractName.substr(0, 4).toUpperCase()}") {
-        _mint(msg.sender, initialSupply);
-    }
-
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
-    }
-}`;
-    }
-    // Add more patterns here...
-    
-    // Default "fun" contract (fallback to previous logic)
-    const words = prompt.split(/\s+/).filter(word => word.length > 3);
-    const varName1 = words.length > 0 ? words[0].toLowerCase() : 'data';
-    const varName2 = words.length > 1 ? words[1].toLowerCase() : 'value';
-    const eventName = words.length > 2 ? 
-      words[2].charAt(0).toUpperCase() + words[2].slice(1) + 'Updated' : 
-      'DataUpdated';
-    
-    return `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-/**
- * @title ${contractName}
- * @dev Generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} {
-    // State variables
-    address public owner;
-    uint256 public ${varName1}Count;
-    string public ${varName2}Text;
-    bool public isActive;
-    
-    // Events
-    event ${eventName}(address indexed user, uint256 ${varName1}Count, string ${varName2}Text);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    
-    // Constructor
-    constructor() {
-        owner = msg.sender;
-        ${varName1}Count = ${seed % 100};
-        ${varName2}Text = "Initial value from Ricknad Generator #${seed}";
-        isActive = true;
-    }
-    
-    // Modifiers
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized: owner only");
-        _;
-    }
-    
-    modifier whenActive() {
-        require(isActive, "Contract is not active");
-        _;
-    }
-    
-    // Functions
-    function update${varName1.charAt(0).toUpperCase() + varName1.slice(1)}(uint256 _value) public whenActive {
-        ${varName1}Count = _value;
-        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
-    }
-    
-    function set${varName2.charAt(0).toUpperCase() + varName2.slice(1)}(string memory _text) public onlyOwner whenActive {
-        ${varName2}Text = _text;
-        emit ${eventName}(msg.sender, ${varName1}Count, ${varName2}Text);
-    }
-    
-    function getContractData() public view returns (address, uint256, string memory, bool) {
-        return (owner, ${varName1}Count, ${varName2}Text, isActive);
-    }
-    
-    function toggleActive() public onlyOwner {
-        isActive = !isActive;
-    }
-    
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "New owner cannot be zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}`;
   };
 
   // Compile the current contract
@@ -350,59 +240,46 @@ contract ${contractName} {
       const hasMappings = currentContract.code.includes('mapping');
       const functionCount = (currentContract.code.match(/function\s+\w+/g) || []).length;
       
-      const generatedAbi: any[] = [
-        {
-          "inputs": [],
-          "stateMutability": "nonpayable",
-          "type": "constructor"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "user",
-              "type": "address"
-            },
-            {
-              "indexed": false,
-              "internalType": "uint256",
-              "name": "count",
-              "type": "uint256"
-            },
-            {
-              "indexed": false,
-              "internalType": "string",
-              "name": "text",
-              "type": "string"
-            }
-          ],
-          "name": currentContract.code.match(/event\s+(\w+)/)?.[1] || "DataUpdated",
-          "type": "event"
-        },
-        {
-          "anonymous": false,
-          "inputs": [
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "previousOwner",
-              "type": "address"
-            },
-            {
-              "indexed": true,
-              "internalType": "address",
-              "name": "newOwner",
-              "type": "address"
-            }
-          ],
-          "name": "OwnershipTransferred",
-          "type": "event"
-        }
-      ];
+      // Generate ABI based on the Solidity code
+      const generatedAbi: any[] = [];
       
-      const functionMatches = [...currentContract.code.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure)?\s*(?:returns\s*\(([^)]*)\))?/g)];
+      // Add constructor
+      generatedAbi.push({
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      });
+      
+      // Extract events
+      const eventMatches = [...currentContract.code.matchAll(/event\s+(\w+)\s*\(([^)]*)\)\s*;/g)];
+      for (const match of eventMatches) {
+        const eventName = match[1];
+        const eventParams = match[2].trim();
+        
+        const inputs = eventParams.split(',').filter(p => p.trim()).map((param, index) => {
+          const parts = param.trim().split(/\s+/);
+          const indexed = parts.includes('indexed');
+          const type = indexed ? parts[0] : parts[0];
+          const name = parts[parts.length - 1];
+          
+          return {
+            "indexed": indexed,
+            "internalType": type,
+            "name": name,
+            "type": type
+          };
+        });
+        
+        generatedAbi.push({
+          "anonymous": false,
+          "inputs": inputs,
+          "name": eventName,
+          "type": "event"
+        });
+      }
+      
+      // Extract functions
+      const functionMatches = [...currentContract.code.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g)];
       
       for (const match of functionMatches) {
         const name = match[1];
@@ -411,32 +288,37 @@ contract ${contractName} {
         const mutability = match[4] || "nonpayable";
         const returns = match[5];
         
-        const abiFunction: any = {
-          "inputs": params.split(',').filter(p => p.trim()).map(param => {
-            const parts = param.trim().split(' ');
-            return {
-              "internalType": parts[0],
-              "name": parts[1] || `param${Math.floor(Math.random() * 1000)}`,
-              "type": parts[0]
-            };
-          }),
-          "name": name,
-          "outputs": returns ? returns.split(',').filter(r => r.trim()).map(ret => {
-            const parts = ret.trim().split(' ');
-            return {
-              "internalType": parts[0],
-              "name": "",
-              "type": parts[0]
-            };
-          }) : [],
-          "stateMutability": mutability || "nonpayable",
-          "type": "function"
-        };
+        // Parse inputs
+        const inputs = params.split(',').filter(p => p.trim()).map(param => {
+          const parts = param.trim().split(/\s+/);
+          return {
+            "internalType": parts[0],
+            "name": parts[1] || `param${Math.floor(Math.random() * 1000)}`,
+            "type": parts[0]
+          };
+        });
         
-        generatedAbi.push(abiFunction);
+        // Parse outputs
+        const outputs = returns ? returns.split(',').filter(r => r.trim()).map(ret => {
+          const parts = ret.trim().split(/\s+/);
+          return {
+            "internalType": parts[0],
+            "name": parts[1] || "",
+            "type": parts[0]
+          };
+        }) : [];
+        
+        generatedAbi.push({
+          "inputs": inputs,
+          "name": name,
+          "outputs": outputs,
+          "stateMutability": mutability === "payable" ? "payable" : mutability || "nonpayable",
+          "type": "function"
+        });
       }
       
-      const validBytecodeSample = "608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063771602f714610030575b600080fd5b61004a6004803603810190610045919061009d565b610060565b60405161005791906100d9565b60405180910390f35b6000818361006e91906100f4565b905092915050565b600080fd5b6000819050919050565b61008a8161007d565b811461009557600080fd5b50565b6000813590506100a781610081565b92915050565b600080604083850312156100b4576100b3610079565b5b60006100c285828601610098565b92505060206100d385828601610098565b9150509250929050565b6100e38161007d565b82525050565b60006020820190506100fe60008301846100dc565b92915050565b7f4e487b710000000000000000000000000000000000000000000000000000000060e052604160045260246000fd5b600061013f8261007d565b915061014a8361007d565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0382111561017f5761017e610105565b5b82820190509291505056fea264697066735822122024d33be7c73c099cedba7e11787e893151b39c977d9712cce3a0db7f94ba066764736f6c634300080d0033";
+      // Sample valid bytecode
+      const validBytecodeSample = "0x608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063771602f714610030575b600080fd5b61004a6004803603810190610045919061009d565b610060565b60405161005791906100d9565b60405180910390f35b6000818361006e91906100f4565b905092915050565b600080fd5b6000819050919050565b61008a8161007d565b811461009557600080fd5b50565b6000813590506100a781610081565b92915050565b600080604083850312156100b4576100b3610079565b5b60006100c285828601610098565b92505060206100d385828601610098565b9150509250929050565b6100e38161007d565b82525050565b60006020820190506100fe60008301846100dc565b92915050565b7f4e487b710000000000000000000000000000000000000000000000000000000060e052604160045260246000fd5b600061013f8261007d565b915061014a8361007d565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0382111561017f5761017e610105565b5b82820190509291505056fea264697066735822122024d33be7c73c099cedba7e11787e893151b39c977d9712cce3a0db7f94ba066764736f6c634300080d0033";
       
       setCurrentContract({
         ...currentContract,
@@ -451,9 +333,11 @@ contract ${contractName} {
         content: "Contract compiled successfully! You can now deploy it to the Monad Testnet.",
         timestamp: Date.now(),
         contractData: {
+          name: currentContract.name,
           code: currentContract.code,
           abi: generatedAbi,
-          bytecode: validBytecodeSample
+          bytecode: validBytecodeSample,
+          type: currentContract.type
         }
       };
       
@@ -502,11 +386,33 @@ contract ${contractName} {
       
       const result = await deployContract(currentContract.abi, currentContract.bytecode, signer);
       
+      // Update current contract
       setCurrentContract({
         ...currentContract,
         deployedAddress: result.address,
         deploymentTx: result.deploymentTx
       });
+      
+      // Add to deployed contracts list in local storage
+      const newContract: DeployedContract = {
+        name: currentContract.name,
+        address: result.address,
+        abi: currentContract.abi,
+        bytecode: currentContract.bytecode,
+        deploymentTx: result.deploymentTx,
+        timestamp: Date.now(),
+        status: 'success',
+        type: currentContract.type || 'custom'
+      };
+      
+      try {
+        const existingContracts = localStorage.getItem('ricknad_deployed_contracts');
+        const contracts = existingContracts ? JSON.parse(existingContracts) : [];
+        contracts.unshift(newContract); // Add to beginning of array
+        localStorage.setItem('ricknad_deployed_contracts', JSON.stringify(contracts));
+      } catch (err) {
+        console.error('Failed to save contract to local storage:', err);
+      }
       
       // Add a deployment success message
       const deploymentMessage: Message = {
@@ -515,15 +421,18 @@ contract ${contractName} {
         content: `Contract deployed successfully to the Monad Testnet at address ${result.address}`,
         timestamp: Date.now(),
         contractData: {
+          name: currentContract.name,
           code: currentContract.code,
           abi: currentContract.abi,
           bytecode: currentContract.bytecode,
           deployedAddress: result.address,
-          deploymentTx: result.deploymentTx
+          deploymentTx: result.deploymentTx,
+          type: currentContract.type
         }
       };
       
       setMessages(prev => [...prev, deploymentMessage]);
+      setSelectedDeployedContract(newContract);
       toast.success("Contract deployed successfully!");
     } catch (err: any) {
       console.error('Error deploying contract:', err);
@@ -566,14 +475,14 @@ contract ${contractName} {
       </div>
 
       {!isConnected ? (
-        <Card className="mb-6 animate-scale-in">
+        <Card className="mb-6 animate-scale-in shadow-lg border-monad-accent/20">
           <CardContent className="pt-6">
-            <Alert>
-              <FileCode className="h-5 w-5" />
+            <Alert className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5 border-monad-primary/20">
+              <FileCode className="h-5 w-5 text-monad-primary" />
               <AlertDescription className="flex flex-col items-center space-y-4">
-                <p>Connect your wallet to deploy smart contracts to the Monad Testnet.</p>
+                <p className="text-center">Connect your wallet to deploy smart contracts to the Monad Testnet.</p>
                 <Button 
-                  className="bg-monad-primary hover:bg-monad-accent hover:text-black"
+                  className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
                   onClick={connectWallet}
                 >
                   Connect Wallet
@@ -585,10 +494,10 @@ contract ${contractName} {
       ) : null}
 
       <div className="flex flex-col space-y-4">
-        <Card className="flex-1 animate-fade-in">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Rocket className="mr-2 h-5 w-5 text-monad-accent" />
+        <Card className="flex-1 animate-fade-in shadow-lg border-monad-accent/20">
+          <CardHeader className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5">
+            <CardTitle className="flex items-center text-monad-primary">
+              <MessageSquare className="mr-2 h-5 w-5 text-monad-accent" />
               Monad AI Chat
             </CardTitle>
             <CardDescription>
@@ -637,7 +546,7 @@ contract ${contractName} {
                       <div className="mt-4">
                         <div className="bg-gray-800 p-3 rounded-lg text-left">
                           <div className="flex justify-between items-center mb-2">
-                            <div className="text-xs text-gray-400">Solidity Contract</div>
+                            <div className="text-xs text-gray-400">Solidity Contract: {message.contractData.name}</div>
                             <Button 
                               variant="ghost" 
                               size="sm" 
@@ -655,7 +564,7 @@ contract ${contractName} {
                         <div className="flex flex-wrap gap-2 mt-3">
                           <Button 
                             size="sm" 
-                            className="bg-monad-primary hover:bg-monad-accent hover:text-black"
+                            className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
                             onClick={compileContract}
                             disabled={isCompiling}
                           >
@@ -666,7 +575,7 @@ contract ${contractName} {
                           {message.contractData?.abi && (
                             <Button 
                               size="sm" 
-                              className="bg-monad-primary hover:bg-monad-accent hover:text-black"
+                              className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
                               onClick={deploySmartContract}
                               disabled={isDeploying || !isConnected}
                             >
@@ -743,7 +652,7 @@ contract ${contractName} {
                 }}
               />
               <Button 
-                className="bg-monad-primary hover:bg-monad-accent hover:text-black"
+                className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
                 onClick={handleSendMessage}
                 disabled={!inputValue.trim() || isTyping}
               >
@@ -761,14 +670,16 @@ contract ${contractName} {
                 {[
                   "What is Monad?",
                   "How does gas work?",
-                  "Make me an ERC20 token",
-                  "Create an NFT contract"
+                  "Create an ERC20 token",
+                  "Generate an NFT contract",
+                  "Make a staking contract",
+                  "Create upgradeable proxy"
                 ].map((suggestion) => (
                   <Button
                     key={suggestion}
                     variant="outline"
                     size="sm"
-                    className="text-xs"
+                    className="text-xs bg-gray-50 hover:bg-monad-primary/10"
                     onClick={() => {
                       setInputValue(suggestion);
                     }}
@@ -780,6 +691,14 @@ contract ${contractName} {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Contract Interaction Widget for Currently Deployed Contract */}
+        {selectedDeployedContract && (
+          <ContractInteractionWidget contract={selectedDeployedContract} />
+        )}
+        
+        {/* Deployed Contracts List */}
+        <DeployedContractsList onContractSelect={setSelectedDeployedContract} />
       </div>
     </div>
   );
