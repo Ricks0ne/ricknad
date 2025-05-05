@@ -1,13 +1,27 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ExternalLink, ShieldCheck } from "lucide-react";
+import { 
+  Loader2, 
+  ExternalLink, 
+  ShieldCheck, 
+  CheckCircle2, 
+  AlertCircle,
+  RefreshCcw 
+} from "lucide-react";
 import { toast } from "sonner";
 import { MONAD_TESTNET } from "@/config/monad";
-import { verifyContractOnSourcify, getVerificationStatus, saveVerificationStatus, VerificationStatus } from "@/utils/verification";
+import { 
+  verifyContractOnSourcify, 
+  getVerificationStatus, 
+  saveVerificationStatus, 
+  VerificationStatus,
+  checkExplorerVerificationStatus,
+  refreshVerificationStatus
+} from "@/utils/verification";
 
 interface ContractVerificationProps {
   contractAddress: string;
@@ -26,6 +40,29 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>(
     getVerificationStatus(contractAddress)
   );
+  const [explorerVerified, setExplorerVerified] = useState<boolean | null>(null);
+  const [isCheckingExplorer, setIsCheckingExplorer] = useState(false);
+  
+  // Check if the contract is verified on the explorer when the component loads
+  useEffect(() => {
+    if (verificationStatus === 'success' && explorerVerified === null) {
+      checkExplorerStatus();
+    }
+  }, [verificationStatus, explorerVerified]);
+  
+  const checkExplorerStatus = async () => {
+    if (isCheckingExplorer) return;
+    
+    setIsCheckingExplorer(true);
+    try {
+      const isVerifiedOnExplorer = await checkExplorerVerificationStatus(contractAddress);
+      setExplorerVerified(isVerifiedOnExplorer);
+    } catch (error) {
+      console.error("Error checking explorer status:", error);
+    } finally {
+      setIsCheckingExplorer(false);
+    }
+  };
   
   const handleVerify = async () => {
     if (isVerifying) return;
@@ -43,22 +80,36 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
       );
       
       if (result.status === 'success') {
-        toast.success("Contract verified successfully!");
         setVerificationStatus('success');
         saveVerificationStatus(contractAddress, 'success');
+        // After successful verification, check if it's reflected on explorer
+        setTimeout(() => {
+          checkExplorerStatus();
+        }, 2000);
       } else {
-        toast.error(`Verification failed: ${result.message}`);
         setVerificationStatus('failure');
         saveVerificationStatus(contractAddress, 'failure');
       }
     } catch (error) {
       console.error('Error during verification:', error);
-      toast.error("An error occurred during verification");
       setVerificationStatus('failure');
       saveVerificationStatus(contractAddress, 'failure');
     } finally {
       setIsVerifying(false);
     }
+  };
+  
+  const handleRefresh = async () => {
+    setIsCheckingExplorer(true);
+    const updatedStatus = await refreshVerificationStatus(contractAddress);
+    setVerificationStatus(updatedStatus);
+    
+    if (updatedStatus === 'success') {
+      setExplorerVerified(true);
+    } else {
+      await checkExplorerStatus();
+    }
+    setIsCheckingExplorer(false);
   };
   
   const explorerUrl = `${MONAD_TESTNET.blockExplorerUrl}/address/${contractAddress}`;
@@ -91,56 +142,163 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
           
           {verificationStatus === 'success' ? (
             <div className="p-4 border rounded-lg bg-green-50 border-green-200">
-              <div className="flex items-center mb-2">
-                <Badge variant="default" className="bg-green-500 text-white">
-                  ✅ Verified on Sourcify
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Badge variant="default" className="bg-green-500 text-white flex items-center gap-1">
+                  <CheckCircle2 size={12} />
+                  Verified on Sourcify
                 </Badge>
+                
+                {explorerVerified === true ? (
+                  <Badge variant="default" className="bg-blue-500 text-white flex items-center gap-1">
+                    <CheckCircle2 size={12} />
+                    Verified on Monad Explorer
+                  </Badge>
+                ) : explorerVerified === false ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-orange-500 border-orange-200 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Pending on Monad Explorer
+                    </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleRefresh}
+                      disabled={isCheckingExplorer}
+                      className="h-6 text-xs"
+                    >
+                      {isCheckingExplorer ? (
+                        <Loader2 size={12} className="mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCcw size={12} className="mr-1" />
+                      )}
+                      Sync
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-gray-500 border-gray-200 flex items-center gap-1">
+                    {isCheckingExplorer ? (
+                      <Loader2 size={12} className="mr-1 animate-spin" />
+                    ) : (
+                      <AlertCircle size={12} />
+                    )}
+                    Checking Explorer Status...
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-green-700 mb-3">
                 Your contract has been successfully verified. The source code is now publicly available on Sourcify.
+                {explorerVerified === false && 
+                  " It may take a few minutes for the verification to be reflected on Monad Explorer."}
               </p>
-              <Button 
-                variant="outline" 
-                className="text-sm flex items-center"
-                onClick={() => window.open(explorerUrl, '_blank')}
-              >
-                <ExternalLink size={16} className="mr-2" />
-                View on Monad Explorer
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-sm flex items-center"
+                  onClick={() => window.open(explorerUrl, '_blank')}
+                >
+                  <ExternalLink size={16} className="mr-2" />
+                  View on Monad Explorer
+                </Button>
+                
+                {explorerVerified === false && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-sm flex items-center"
+                    onClick={handleRefresh}
+                    disabled={isCheckingExplorer}
+                  >
+                    {isCheckingExplorer ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCcw size={16} className="mr-2" />
+                    )}
+                    Refresh Verification Status
+                  </Button>
+                )}
+              </div>
             </div>
           ) : verificationStatus === 'failure' ? (
             <div className="p-4 border rounded-lg bg-red-50 border-red-200">
-              <Badge variant="destructive">Verification Failed</Badge>
-              <p className="text-sm text-red-700 mt-2">
-                There was a problem verifying your contract. Please try again or check that your contract 
-                is deployed correctly.
+              <Badge variant="destructive" className="flex items-center gap-1 mb-2">
+                <AlertCircle size={12} />
+                Verification Failed
+              </Badge>
+              <p className="text-sm text-red-700 mb-3">
+                There was a problem verifying your contract. This could be due to:
               </p>
-              <div className="mt-3">
+              <ul className="list-disc pl-5 text-xs text-red-600 mb-3">
+                <li>Incorrect contract source code or ABI</li>
+                <li>Compiler version mismatch</li>
+                <li>Missing dependencies in your contract code</li>
+                <li>Optimization settings mismatch</li>
+              </ul>
+              <div className="flex flex-wrap gap-2 mt-3">
                 <Button 
+                  size="sm"
                   onClick={handleVerify}
-                  className="bg-monad-accent hover:bg-monad-accent/80 text-black"
+                  className="bg-monad-accent hover:bg-monad-accent/80 text-black flex items-center"
+                  disabled={isVerifying}
                 >
+                  {isVerifying ? (
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                  ) : (
+                    <ShieldCheck size={16} className="mr-2" />
+                  )}
                   Try Again
                 </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-sm flex items-center"
+                  onClick={() => window.open(explorerUrl, '_blank')}
+                >
+                  <ExternalLink size={16} className="mr-2" />
+                  View on Monad Explorer
+                </Button>
+              </div>
+            </div>
+          ) : verificationStatus === 'pending' ? (
+            <div className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+              <div className="flex items-center mb-2">
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                  Verification in Progress
+                </Badge>
+              </div>
+              <div className="flex items-center justify-center p-4">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-monad-accent" />
+                  <p className="text-sm text-yellow-700">
+                    Verifying your contract on Sourcify...
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    This process usually takes 15-30 seconds
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
             <div className="flex flex-col space-y-3">
-              {verificationStatus === 'pending' ? (
-                <div className="text-center p-4">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-monad-accent" />
-                  <p className="text-sm">Verification in progress...</p>
-                </div>
-              ) : (
+              <div className="p-4 border rounded-lg">
+                <p className="text-sm mb-3">
+                  Your contract is not verified yet. Verifying your contract allows anyone to inspect and audit your code, 
+                  increasing transparency and user trust.
+                </p>
                 <Button
                   onClick={handleVerify}
                   disabled={isVerifying}
-                  className="bg-monad-accent hover:bg-monad-accent/80 text-black"
+                  className="bg-monad-accent hover:bg-monad-accent/80 text-black flex items-center"
                 >
-                  {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isVerifying ? (
+                    <Loader2 size={16} className="mr-2 animate-spin" />
+                  ) : (
+                    <ShieldCheck size={16} className="mr-2" />
+                  )}
                   Verify on Sourcify
                 </Button>
-              )}
+              </div>
             </div>
           )}
           

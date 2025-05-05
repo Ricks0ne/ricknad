@@ -65,4 +65,5 @@ export interface DeployedContract {
   status: 'success' | 'pending' | 'failed';
   type: ContractType;
   sourceCode?: string;
+  verificationStatus?: 'unverified' | 'pending' | 'success' | 'failure';
 }
