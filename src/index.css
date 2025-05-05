@@ -1,11 +1,13 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 94%;  /* Light gray (#F0F0F0) */
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -15,31 +17,31 @@
     --popover-foreground: 222.2 84% 4.9%;
 
     /* Updated colors based on Monad theme */
-    --primary: 180 100% 25%;  /* Deep teal (#008080) */
+    --primary: 165 45% 33%;  /* Dark teal (#2E7B6D) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 94%;  /* Light gray (#F0F0F0) */
-    --secondary-foreground: 180 100% 25%;
+    --secondary-foreground: 165 45% 33%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
     --accent: 187 100% 74%;  /* Electric blue (#7DF9FF) */
-    --accent-foreground: 180 100% 25%;
+    --accent-foreground: 165 45% 33%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 180 100% 25%;
+    --ring: 165 45% 33%;
 
     --radius: 0.75rem; /* Increased radius for more rounded corners */
 
     /* Sidebar colors - set to black with white text */
     --sidebar-background: 0 0% 0%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 180 100% 25%;
+    --sidebar-primary: 165 45% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 187 100% 74%;
     --sidebar-accent-foreground: 0 0% 0%;
@@ -97,7 +99,7 @@
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-semibold tracking-tight font-grotesk;
   }
 }
 
@@ -172,7 +174,7 @@ button:active:not(:disabled) {
 
 /* Card styles */
 .card {
-  @apply rounded-lg border shadow-sm;
+  @apply rounded-2xl border shadow-sm;
 }
 
 .card-hover {
@@ -187,4 +189,13 @@ button:active:not(:disabled) {
 .neon-text {
   @apply text-monad-accent;
   text-shadow: 0 0 5px rgba(125, 249, 255, 0.5);
+}
+
+/* Chat bubble styles */
+.chat-bubble-ai {
+  @apply bg-monad-primary text-white rounded-2xl p-4 animate-fade-in shadow-sm;
+}
+
+.chat-bubble-user {
+  @apply bg-white rounded-2xl p-4 animate-fade-in shadow-sm;
 }

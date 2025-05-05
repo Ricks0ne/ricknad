@@ -9,7 +9,8 @@ import {
   Wallet as WalletIcon,
   ExternalLink,
   X,
-  FileCode
+  FileCode,
+  Twitter
 } from 'lucide-react';
 import { useWeb3 } from '../web3/Web3Provider';
 import { Button } from '@/components/ui/button';
@@ -60,8 +61,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       )}
 
       <div className="px-4 mb-8">
-        <h2 className="text-2xl font-bold text-monad-accent">Ricknad</h2>
-        <div className="flex items-center mt-1">
+        <h2 className="text-2xl font-bold text-monad-accent font-grotesk">Ricknad</h2>
+        <p className="text-xs text-gray-400 mt-1">Generate smart contracts & ask Monad AI anything</p>
+        <div className="flex items-center mt-2">
           <FileCode className="h-4 w-4 mr-2 text-monad-accent" />
           <p className="text-sm text-gray-400">Monad Smart Contracts</p>
         </div>
@@ -70,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       <div className="px-4 mb-6">
         {isConnected && account ? (
           <div className="space-y-2">
-            <div className="flex items-center space-x-2 bg-gray-800 p-2 rounded-md">
+            <div className="flex items-center space-x-2 bg-gray-800 p-2 rounded-xl">
               <WalletIcon className="h-4 w-4 text-monad-accent" />
               <span className="text-sm truncate">{formatAddress(account)}</span>
             </div>
@@ -84,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </div>
         ) : (
           <Button 
-            className="w-full bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+            className="w-full bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors rounded-xl"
             onClick={connectWallet}
             disabled={isConnecting}
           >
@@ -101,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                 to={item.path}
                 onClick={isMobile ? onClose : undefined}
                 className={cn(
-                  "flex items-center space-x-3 px-4 py-3 rounded-md transition-colors",
+                  "flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors",
                   isActive(item.path)
                     ? "bg-monad-primary text-white"
                     : "text-gray-300 hover:bg-gray-800 hover:text-monad-accent"
@@ -123,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         <Button
           variant="outline"
           size="sm"
-          className="w-full text-xs border-monad-accent/30 text-monad-accent"
+          className="w-full text-xs border-monad-accent/30 text-monad-accent mb-4 rounded-xl"
           asChild
         >
           <a href="https://faucet.monad.xyz/" target="_blank" rel="noopener noreferrer">
@@ -131,6 +133,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             Get Testnet Tokens
           </a>
         </Button>
+        
+        <a 
+          href="https://x.com/0xFred_" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center justify-center text-xs text-gray-400 hover:text-monad-accent transition-colors"
+        >
+          <Twitter className="h-3 w-3 mr-1" />
+          Follow me on X: @0xFred_
+        </a>
       </div>
     </div>
   );
