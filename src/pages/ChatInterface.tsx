@@ -278,7 +278,8 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       }
       
       // Extract functions
-      const functionMatches = [...currentContract.code.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g]);
+      const functionMatchPattern = /function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g;
+      const functionMatches = [...currentContract.code.matchAll(functionMatchPattern)];
       
       for (const match of functionMatches) {
         const name = match[1];
