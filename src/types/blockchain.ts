@@ -1,3 +1,4 @@
+
 export interface WalletInfo {
   address: string;
   balance: string;
@@ -25,7 +26,7 @@ export interface SmartContract {
   name?: string;
   abi: any[];
   bytecode: string;
-  deploymentTx: string;
+  deploymentTx?: string; // Changed from required to optional
   timestamp?: number;
   type?: ContractType;
 }
