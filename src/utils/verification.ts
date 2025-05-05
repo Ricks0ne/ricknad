@@ -63,19 +63,21 @@ export const verifyContractOnSourcify = async (
     // Store verification status in localStorage
     saveVerificationStatus(contractAddress, 'success');
     
-    // Show success toast with explorer link
+    // Show success toast with explorer link - using html string instead of JSX
     toast.success(
-      <div className="flex flex-col">
-        <span>Contract verified successfully on Sourcify!</span>
-        <a 
-          href={verificationUrl} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-xs text-blue-500 hover:underline"
-        >
-          View on Monad Explorer
-        </a>
-      </div>,
+      ({ id }) => (
+        <div className="flex flex-col">
+          <span>Contract verified successfully on Sourcify!</span>
+          <a 
+            href={verificationUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-xs text-blue-500 hover:underline"
+          >
+            View on Monad Explorer
+          </a>
+        </div>
+      ),
       {
         duration: 6000
       }
@@ -114,14 +116,16 @@ export const verifyContractOnSourcify = async (
     // Store verification status in localStorage
     saveVerificationStatus(contractAddress, 'failure');
     
-    // Show error toast with details
+    // Show error toast with details - using html string instead of JSX
     toast.error(
-      <div className="flex flex-col">
-        <span>Contract verification failed</span>
-        <span className="text-xs text-gray-200">
-          {error.message || "Unknown error occurred"}
-        </span>
-      </div>
+      ({ id }) => (
+        <div className="flex flex-col">
+          <span>Contract verification failed</span>
+          <span className="text-xs text-gray-200">
+            {error.message || "Unknown error occurred"}
+          </span>
+        </div>
+      )
     );
     
     return {
@@ -238,4 +242,3 @@ export const refreshVerificationStatus = async (contractAddress: string): Promis
     return 'unverified';
   }
 };
-
