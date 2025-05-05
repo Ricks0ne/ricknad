@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -286,7 +285,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
     
     if (typeof value === 'object') {
       // For BigNumber objects from ethers
-      if (value._isBigNumber || value instanceof ethers.BigInt) {
+      if (typeof value === 'bigint' || (typeof value === 'object' && value.constructor?.name === 'BigNumber')) {
         return value.toString();
       }
       
@@ -325,7 +324,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
     
     if (typeof result === 'object') {
       // For BigNumber objects from ethers
-      if (ethers.isBigInt(result)) {
+      if (typeof result === 'bigint' || (typeof result === 'object' && result.constructor?.name === 'BigNumber')) {
         return <span className="font-mono">{result.toString()}</span>;
       }
       

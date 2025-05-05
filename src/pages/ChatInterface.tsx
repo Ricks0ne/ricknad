@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -279,7 +278,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       }
       
       // Extract functions
-      const functionMatches = [...currentContract.code.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g)];
+      const functionMatches = [...currentContract.code.matchAll(/function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g]);
       
       for (const match of functionMatches) {
         const name = match[1];
@@ -402,7 +401,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
         deploymentTx: result.deploymentTx,
         timestamp: Date.now(),
         status: 'success',
-        type: currentContract.type || 'custom'
+        type: (currentContract.type as ContractType) || 'custom'
       };
       
       try {
