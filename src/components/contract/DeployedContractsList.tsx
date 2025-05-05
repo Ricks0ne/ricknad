@@ -1,16 +1,18 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Copy, ExternalLink, FileText, Search, Trash2, SquareCheck, Loader } from 'lucide-react';
+import { Copy, ExternalLink, FileText, Search, Trash2, SquareCheck, Loader, ShieldCheck } from 'lucide-react';
 import { DeployedContract } from '@/types/blockchain';
 import { formatAddress } from '@/utils/blockchain';
 import { MONAD_TESTNET } from '@/config/monad';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getVerificationStatus } from '@/utils/verification';
 import ContractInteractionWidget from './ContractInteractionWidget';
+import ContractVerification from './ContractVerification';
 
 interface DeployedContractsListProps {
   onContractSelect: (contract: DeployedContract) => void;
@@ -201,6 +203,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
           <div className="space-y-4">
             {filteredContracts.map((contract) => {
               const typeInfo = getContractTypeInfo(contract.type);
+              const verificationStatus = getVerificationStatus(contract.address);
               
               return (
                 <div 
@@ -214,6 +217,14 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
                         <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-100 ${typeInfo.color}`}>
                           {typeInfo.label}
                         </span>
+                        
+                        {/* Add verification badge */}
+                        {verificationStatus === 'success' && (
+                          <Badge className="bg-green-500 text-white flex items-center gap-1">
+                            <ShieldCheck size={12} />
+                            Verified
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-500">
@@ -311,12 +322,24 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
             <Tabs defaultValue="interact">
               <TabsList className="w-full">
                 <TabsTrigger value="interact">Interact</TabsTrigger>
+                <TabsTrigger value="verify">Verify</TabsTrigger>
                 <TabsTrigger value="abi">ABI</TabsTrigger>
               </TabsList>
               
               <TabsContent value="interact" className="mt-4">
                 {selectedContract && (
                   <ContractInteractionWidget contract={selectedContract} />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="verify" className="mt-4">
+                {selectedContract && (
+                  <ContractVerification 
+                    contractAddress={selectedContract.address}
+                    contractName={selectedContract.name}
+                    sourceCode={deployedContracts.find(c => c.address === selectedContract.address)?.sourceCode || ""}
+                    abi={selectedContract.abi}
+                  />
                 )}
               </TabsContent>
               

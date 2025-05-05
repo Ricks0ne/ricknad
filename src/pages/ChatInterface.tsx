@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +22,7 @@ import { toast } from "sonner";
 import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
 import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
 import DeployedContractsList from "@/components/contract/DeployedContractsList";
+import ContractVerification from "@/components/contract/ContractVerification";
 
 interface Message {
   id: string;
@@ -403,7 +403,8 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
         deploymentTx: result.deploymentTx,
         timestamp: Date.now(),
         status: 'success',
-        type: (currentContract.type as ContractType) || 'custom'
+        type: (currentContract.type as ContractType) || 'custom',
+        sourceCode: currentContract.code // Store source code for verification
       };
       
       try {
@@ -693,9 +694,23 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
           </CardContent>
         </Card>
         
-        {/* Contract Interaction Widget for Currently Deployed Contract */}
+        {/* Contract Interaction and Verification Widgets */}
         {selectedDeployedContract && (
-          <ContractInteractionWidget contract={selectedDeployedContract} />
+          <>
+            <ContractInteractionWidget contract={selectedDeployedContract} />
+            
+            {/* Add the verification component */}
+            {selectedDeployedContract.address && (
+              <ContractVerification 
+                contractAddress={selectedDeployedContract.address}
+                contractName={selectedDeployedContract.name}
+                sourceCode={messages.find(m => 
+                  m.contractData?.deployedAddress === selectedDeployedContract.address
+                )?.contractData?.code || ""}
+                abi={selectedDeployedContract.abi}
+              />
+            )}
+          </>
         )}
         
         {/* Deployed Contracts List */}

@@ -1,4 +1,3 @@
-
 export interface WalletInfo {
   address: string;
   balance: string;
@@ -55,11 +54,14 @@ export interface ContractTemplate {
   code: string;
 }
 
-export interface DeployedContract extends SmartContract {
+export interface DeployedContract {
   name: string;
   address: string;
   abi: any[];
+  bytecode: string;
+  deploymentTx?: string;
   timestamp: number;
   status: 'success' | 'pending' | 'failed';
   type: ContractType;
+  sourceCode?: string;
 }
