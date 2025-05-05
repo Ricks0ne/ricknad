@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +20,7 @@ import { MONAD_TESTNET } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
 import { generateContract } from "@/utils/contractGenerator";
 import { toast } from "sonner";
-import { DeployedContract, SmartContract } from "@/types/blockchain";
+import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
 import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
 import DeployedContractsList from "@/components/contract/DeployedContractsList";
 
