@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { MONAD_TESTNET } from "@/config/monad";
 
@@ -63,25 +62,15 @@ export const verifyContractOnSourcify = async (
     // Store verification status in localStorage
     saveVerificationStatus(contractAddress, 'success');
     
-    // Show success toast with explorer link - using html string instead of JSX
-    toast.success(
-      ({ id }) => (
-        <div className="flex flex-col">
-          <span>Contract verified successfully on Sourcify!</span>
-          <a 
-            href={verificationUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-xs text-blue-500 hover:underline"
-          >
-            View on Monad Explorer
-          </a>
-        </div>
-      ),
-      {
-        duration: 6000
-      }
-    );
+    // Show success toast with explorer link - use a function that returns a string instead of JSX
+    toast.success("Contract verified successfully on Sourcify!", {
+      description: `View contract on Monad Explorer: ${verificationUrl}`,
+      action: {
+        label: "View",
+        onClick: () => window.open(verificationUrl, "_blank")
+      },
+      duration: 6000
+    });
     
     return {
       status: 'success',
@@ -116,17 +105,11 @@ export const verifyContractOnSourcify = async (
     // Store verification status in localStorage
     saveVerificationStatus(contractAddress, 'failure');
     
-    // Show error toast with details - using html string instead of JSX
-    toast.error(
-      ({ id }) => (
-        <div className="flex flex-col">
-          <span>Contract verification failed</span>
-          <span className="text-xs text-gray-200">
-            {error.message || "Unknown error occurred"}
-          </span>
-        </div>
-      )
-    );
+    // Show error toast with details - use string content instead of JSX
+    toast.error("Contract verification failed", {
+      description: error.message || "Unknown error occurred",
+      duration: 5000
+    });
     
     return {
       status: 'failure',
