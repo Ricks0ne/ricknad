@@ -782,7 +782,7 @@ const generateStakingContract = (
                       prompt.toLowerCase().includes("lock period") || 
                       prompt.toLowerCase().includes("vesting");
   
-  // Variables - FIX: The uint25 was incomplete, changing to uint256
+  // Variables - Fixed the incomplete variable declaration
   let variables = [
     `// Staking token (what users deposit)
     IERC20 public stakingToken;
@@ -803,4 +803,930 @@ const generateStakingContract = (
     uint256 public rewardRate;
     
     // Last time reward amount was updated
-    uint256
+    uint256 public lastUpdateTime;
+    
+    // Reward per token stored
+    uint256 public rewardPerTokenStored;
+    
+    // User address => rewardPerTokenStored
+    mapping(address => uint256) public userRewardPerTokenPaid;
+    
+    // User address => rewards to be claimed
+    mapping(address => uint256) public rewards;
+    
+    // User address => staked amount
+    mapping(address => uint256) public balanceOf;
+    
+    // Total staked
+    uint256 public totalSupply;
+    
+    // User address => timestamp when they can unstake
+    mapping(address => uint256) public unlockTime;`
+  ];
+  
+  // Constructor for staking contract
+  let constructor = [
+    `stakingToken = _stakingToken;
+        rewardToken = _rewardToken;
+        
+        // Set initial reward duration to 7 days
+        duration = 7 days;`
+  ];
+  
+  // Functions for staking contract
+  let functions = [
+    `// Update reward variables
+    modifier updateReward(address account) {
+        rewardPerTokenStored = rewardPerToken();
+        lastUpdateTime = lastTimeRewardApplicable();
+        
+        if (account != address(0)) {
+            rewards[account] = earned(account);
+            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        }
+        _;
+    }
+    
+    // Returns the last timestamp when rewards are applicable
+    function lastTimeRewardApplicable() public view returns (uint256) {
+        return block.timestamp < finishAt ? block.timestamp : finishAt;
+    }
+    
+    // Calculate the reward per token
+    function rewardPerToken() public view returns (uint256) {
+        if (totalSupply == 0) {
+            return rewardPerTokenStored;
+        }
+        
+        return rewardPerTokenStored + (
+            (lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18 / totalSupply
+        );
+    }
+    
+    // Calculate earned rewards for an account
+    function earned(address account) public view returns (uint256) {
+        return (
+            balanceOf[account] * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18
+        ) + rewards[account];
+    }
+    
+    // Stake tokens
+    function stake(uint256 _amount) external ${features.includes("pausable") ? "whenNotPaused " : ""}nonReentrant updateReward(msg.sender) {
+        require(_amount > 0, "Amount must be greater than 0");
+        
+        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        balanceOf[msg.sender] += _amount;
+        totalSupply += _amount;
+        
+        if (hasTimelock) {
+            unlockTime[msg.sender] = block.timestamp + lockPeriod;
+        }
+        
+        emit Staked(msg.sender, _amount);
+    }
+    
+    // Withdraw staked tokens
+    function withdraw(uint256 _amount) external nonReentrant updateReward(msg.sender) {
+        require(_amount > 0, "Amount must be greater than 0");
+        require(balanceOf[msg.sender] >= _amount, "Insufficient balance");
+        
+        if (hasTimelock) {
+            require(block.timestamp >= unlockTime[msg.sender], "Lock period has not expired");
+        }
+        
+        balanceOf[msg.sender] -= _amount;
+        totalSupply -= _amount;
+        stakingToken.transfer(msg.sender, _amount);
+        
+        emit Withdrawn(msg.sender, _amount);
+    }
+    
+    // Claim earned rewards
+    function getReward() external nonReentrant updateReward(msg.sender) {
+        uint256 reward = rewards[msg.sender];
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            rewardToken.transfer(msg.sender, reward);
+            emit RewardPaid(msg.sender, reward);
+        }
+    }
+    
+    // Added convenience function: Exit (withdraw everything + claim rewards)
+    function exit() external {
+        withdraw(balanceOf[msg.sender]);
+        getReward();
+    }
+    
+    // Set reward duration (only owner)
+    function setRewardsDuration(uint256 _duration) external onlyOwner {
+        require(finishAt < block.timestamp, "Reward period ongoing");
+        duration = _duration;
+        emit RewardsDurationUpdated(_duration);
+    }
+    
+    // Set lock period for staking (only owner)
+    function setLockPeriod(uint256 _lockPeriod) external onlyOwner {
+        lockPeriod = _lockPeriod;
+        emit LockPeriodUpdated(_lockPeriod);
+    }
+    
+    // Notify reward amount (add rewards to be distributed)
+    function notifyRewardAmount(uint256 _amount) external onlyOwner updateReward(address(0)) {
+        if (block.timestamp >= finishAt) {
+            rewardRate = _amount / duration;
+        } else {
+            uint256 remainingRewards = (finishAt - block.timestamp) * rewardRate;
+            rewardRate = (_amount + remainingRewards) / duration;
+        }
+        
+        require(rewardRate > 0, "Reward rate must be greater than 0");
+        
+        // Check if the contract has enough balance to pay the rewards
+        uint256 balance = rewardToken.balanceOf(address(this));
+        require(
+            rewardRate <= balance / duration,
+            "Reward amount > balance"
+        );
+        
+        lastUpdateTime = block.timestamp;
+        finishAt = block.timestamp + duration;
+        
+        emit RewardAdded(_amount);
+    }
+    
+    // Events
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardPaid(address indexed user, uint256 reward);
+    event RewardsDurationUpdated(uint256 newDuration);
+    event LockPeriodUpdated(uint256 newLockPeriod);
+    event RewardAdded(uint256 reward);`.replace("hasTimelock", hasTimelock.toString())
+  ];
+  
+  // Build the contract
+  const inherits = inheritance.join(", ");
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+${imports.join("\n")}
+using SafeERC20 for IERC20;
+
+/**
+ * @title ${contractName}
+ * @dev Staking Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ${inherits} {
+    ${variables.join("\n    ")}
+    
+    constructor(
+        IERC20 _stakingToken,
+        IERC20 _rewardToken
+    ) {
+        ${constructor.join("\n        ")}
+    }
+    
+    ${functions.join("\n    ")}
+}`;
+};
+
+// Generate governance contract
+const generateGovernanceContract = (
+  contractName: string, 
+  features: ContractFeature[], 
+  prompt: string, 
+  seed: number, 
+  currentDate: string
+): string => {
+  const imports = [
+    `import "@openzeppelin/contracts/governance/Governor.sol";`,
+    `import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";`,
+    `import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";`,
+    `import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";`,
+    `import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";`
+  ];
+  
+  const inheritance = [
+    "Governor", 
+    "GovernorCountingSimple", 
+    "GovernorVotes", 
+    "GovernorVotesQuorumFraction", 
+    "GovernorTimelockControl"
+  ];
+  
+  const votingDelay = prompt.toLowerCase().includes("quick") || prompt.toLowerCase().includes("fast") ? "1" : "7200"; // 1 block or ~1 day
+  const votingPeriod = prompt.toLowerCase().includes("quick") || prompt.toLowerCase().includes("fast") ? "45818" : "50400"; // ~1 week or ~1 week
+  const quorumNumerator = prompt.toLowerCase().includes("low quorum") ? "4" : "10"; // 4% or 10%
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+${imports.join("\n")}
+
+/**
+ * @title ${contractName}
+ * @dev Governance Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ${inheritance.join(", ")} {
+    constructor(IVotes _token, TimelockController _timelock)
+        Governor("${contractName}")
+        GovernorVotes(_token)
+        GovernorVotesQuorumFraction(${quorumNumerator})
+        GovernorTimelockControl(_timelock)
+    {}
+
+    function votingDelay() public pure override returns (uint256) {
+        return ${votingDelay}; // ${votingDelay === "1" ? "1 block" : "~1 day"}
+    }
+
+    function votingPeriod() public pure override returns (uint256) {
+        return ${votingPeriod}; // ~1 week
+    }
+
+    function proposalThreshold() public pure override returns (uint256) {
+        return 0;
+    }
+
+    // The functions below are overrides required by Solidity.
+    function state(uint256 proposalId)
+        public
+        view
+        override(Governor, GovernorTimelockControl)
+        returns (ProposalState)
+    {
+        return super.state(proposalId);
+    }
+
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(Governor) returns (uint256) {
+        return super.propose(targets, values, calldatas, description);
+    }
+
+    function _execute(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) {
+        super._execute(proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    function _cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
+        return super._cancel(targets, values, calldatas, descriptionHash);
+    }
+    
+    function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
+        return super._executor();
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(Governor, GovernorTimelockControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+}`;
+};
+
+// Generate upgradeable contract
+const generateUpgradeableContract = (
+  contractName: string, 
+  features: ContractFeature[], 
+  prompt: string, 
+  seed: number, 
+  currentDate: string
+): string => {
+  const isUUPS = features.includes("uups");
+  const isTransparent = features.includes("transparentUpgradeable");
+  const isDiamond = features.includes("diamond");
+  
+  let proxyPattern = isUUPS ? "UUPS" : (isTransparent ? "TransparentUpgradeable" : (isDiamond ? "Diamond" : "UUPS"));
+  
+  let imports = [
+    `import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";`,
+    `import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";`
+  ];
+  
+  let inheritance = ["Initializable", "OwnableUpgradeable"];
+  
+  // Add contract-specific imports and inheritance
+  if (proxyPattern === "UUPS") {
+    imports.push(`import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";`);
+    inheritance.push("UUPSUpgradeable");
+  }
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+${imports.join("\n")}
+
+/**
+ * @title ${contractName}
+ * @dev Upgradeable Contract (${proxyPattern}) auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} is ${inheritance.join(", ")} {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize() public initializer {
+        __Ownable_init();
+        ${proxyPattern === "UUPS" ? `__UUPSUpgradeable_init();` : ``}
+    }
+
+    ${proxyPattern === "UUPS" ? `
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}` : ``}
+
+    // Your contract methods go here
+    uint256 public value;
+    
+    function setValue(uint256 newValue) public onlyOwner {
+        value = newValue;
+    }
+    
+    function getValue() public view returns (uint256) {
+        return value;
+    }
+}`;
+};
+
+// Generate escrow contract
+const generateEscrowContract = (
+  contractName: string, 
+  features: ContractFeature[], 
+  prompt: string, 
+  seed: number, 
+  currentDate: string
+): string => {
+  let imports = [
+    `import "@openzeppelin/contracts/utils/math/SafeMath.sol";`,
+    `import "@openzeppelin/contracts/token/ERC20/IERC20.sol";`,
+    `import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";`
+  ];
+  
+  let inheritance = [];
+  
+  if (features.includes("ownable")) {
+    imports.push(`import "@openzeppelin/contracts/access/Ownable.sol";`);
+    inheritance.push("Ownable");
+  }
+  
+  if (features.includes("pausable")) {
+    imports.push(`import "@openzeppelin/contracts/security/Pausable.sol";`);
+    inheritance.push("Pausable");
+  }
+  
+  const inherits = inheritance.length > 0 ? ` is ${inheritance.join(", ")}` : "";
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+${imports.join("\n")}
+
+/**
+ * @title ${contractName}
+ * @dev Escrow Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName}${inherits} {
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+    
+    struct Escrow {
+        address depositor;
+        address beneficiary;
+        address arbiter;
+        uint256 amount;
+        bool released;
+        bool refunded;
+        uint256 createdAt;
+        uint256 expiresAt;
+        address token; // address(0) for Ether
+    }
+    
+    mapping(bytes32 => Escrow) public escrows;
+    uint256 public fee; // Fee in basis points (1/100 of a percent)
+    address public feeRecipient;
+    
+    event EscrowCreated(
+        bytes32 indexed id,
+        address indexed depositor,
+        address indexed beneficiary,
+        address arbiter,
+        uint256 amount,
+        uint256 expiresAt,
+        address token
+    );
+    
+    event EscrowReleased(bytes32 indexed id);
+    event EscrowRefunded(bytes32 indexed id);
+    event FeeUpdated(uint256 newFee);
+    event FeeRecipientUpdated(address newFeeRecipient);
+    
+    constructor(address _feeRecipient) {
+        require(_feeRecipient != address(0), "Invalid fee recipient");
+        fee = 25; // 0.25%
+        feeRecipient = _feeRecipient;
+    }
+    
+    function createEtherEscrow(
+        address _beneficiary,
+        address _arbiter,
+        uint256 _expiresAt
+    ) external payable ${features.includes("pausable") ? "whenNotPaused " : ""}returns (bytes32) {
+        require(msg.value > 0, "Amount must be > 0");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_arbiter != address(0), "Invalid arbiter");
+        require(_expiresAt > block.timestamp, "Expiry must be in future");
+        
+        bytes32 id = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _beneficiary,
+                _arbiter,
+                block.timestamp,
+                msg.value
+            )
+        );
+        
+        uint256 feeAmount = msg.value.mul(fee).div(10000);
+        uint256 depositAmount = msg.value.sub(feeAmount);
+        
+        if (feeAmount > 0) {
+            payable(feeRecipient).transfer(feeAmount);
+        }
+        
+        escrows[id] = Escrow({
+            depositor: msg.sender,
+            beneficiary: _beneficiary,
+            arbiter: _arbiter,
+            amount: depositAmount,
+            released: false,
+            refunded: false,
+            createdAt: block.timestamp,
+            expiresAt: _expiresAt,
+            token: address(0)
+        });
+        
+        emit EscrowCreated(
+            id,
+            msg.sender,
+            _beneficiary,
+            _arbiter,
+            depositAmount,
+            _expiresAt,
+            address(0)
+        );
+        
+        return id;
+    }
+    
+    function createTokenEscrow(
+        address _token,
+        uint256 _amount,
+        address _beneficiary,
+        address _arbiter,
+        uint256 _expiresAt
+    ) external ${features.includes("pausable") ? "whenNotPaused " : ""}returns (bytes32) {
+        require(_amount > 0, "Amount must be > 0");
+        require(_token != address(0), "Invalid token");
+        require(_beneficiary != address(0), "Invalid beneficiary");
+        require(_arbiter != address(0), "Invalid arbiter");
+        require(_expiresAt > block.timestamp, "Expiry must be in future");
+        
+        bytes32 id = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _beneficiary,
+                _arbiter,
+                block.timestamp,
+                _amount,
+                _token
+            )
+        );
+        
+        uint256 feeAmount = _amount.mul(fee).div(10000);
+        uint256 depositAmount = _amount.sub(feeAmount);
+        
+        // Transfer tokens to this contract
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        
+        // Transfer fee to recipient
+        if (feeAmount > 0) {
+            IERC20(_token).safeTransfer(feeRecipient, feeAmount);
+        }
+        
+        escrows[id] = Escrow({
+            depositor: msg.sender,
+            beneficiary: _beneficiary,
+            arbiter: _arbiter,
+            amount: depositAmount,
+            released: false,
+            refunded: false,
+            createdAt: block.timestamp,
+            expiresAt: _expiresAt,
+            token: _token
+        });
+        
+        emit EscrowCreated(
+            id,
+            msg.sender,
+            _beneficiary,
+            _arbiter,
+            depositAmount,
+            _expiresAt,
+            _token
+        );
+        
+        return id;
+    }
+    
+    function release(bytes32 _id) external {
+        Escrow storage escrow = escrows[_id];
+        
+        require(!escrow.released && !escrow.refunded, "Escrow already settled");
+        require(
+            msg.sender == escrow.arbiter || msg.sender == escrow.depositor,
+            "Not authorized"
+        );
+        
+        escrow.released = true;
+        
+        if (escrow.token == address(0)) {
+            payable(escrow.beneficiary).transfer(escrow.amount);
+        } else {
+            IERC20(escrow.token).safeTransfer(escrow.beneficiary, escrow.amount);
+        }
+        
+        emit EscrowReleased(_id);
+    }
+    
+    function refund(bytes32 _id) external {
+        Escrow storage escrow = escrows[_id];
+        
+        require(!escrow.released && !escrow.refunded, "Escrow already settled");
+        require(
+            (msg.sender == escrow.arbiter) || 
+            (msg.sender == escrow.beneficiary) || 
+            (msg.sender == escrow.depositor && block.timestamp >= escrow.expiresAt),
+            "Not authorized or not expired"
+        );
+        
+        escrow.refunded = true;
+        
+        if (escrow.token == address(0)) {
+            payable(escrow.depositor).transfer(escrow.amount);
+        } else {
+            IERC20(escrow.token).safeTransfer(escrow.depositor, escrow.amount);
+        }
+        
+        emit EscrowRefunded(_id);
+    }
+    
+    // Admin functions
+    ${features.includes("ownable") ? `
+    function setFee(uint256 _fee) external onlyOwner {
+        require(_fee <= 500, "Fee too high"); // Max 5%
+        fee = _fee;
+        emit FeeUpdated(_fee);
+    }
+    
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        require(_feeRecipient != address(0), "Invalid fee recipient");
+        feeRecipient = _feeRecipient;
+        emit FeeRecipientUpdated(_feeRecipient);
+    }` : ``}
+    
+    ${features.includes("pausable") ? `
+    function pause() external onlyOwner {
+        _pause();
+    }
+    
+    function unpause() external onlyOwner {
+        _unpause();
+    }` : ``}
+}`;
+};
+
+// Generate multisig wallet
+const generateMultiSigWallet = (
+  contractName: string, 
+  features: ContractFeature[], 
+  prompt: string, 
+  seed: number, 
+  currentDate: string
+): string => {
+  const numOwners = prompt.match(/(\d+)\s+owners?/i) ? parseInt(prompt.match(/(\d+)\s+owners?/i)![1]) : 3;
+  const numConfirmations = prompt.match(/(\d+)\s+confirmations?/i) ? parseInt(prompt.match(/(\d+)\s+confirmations?/i)![1]) : Math.ceil(numOwners / 2);
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+/**
+ * @title ${contractName}
+ * @dev MultiSig Wallet Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName} {
+    event Deposit(address indexed sender, uint amount, uint balance);
+    event SubmitTransaction(
+        address indexed owner,
+        uint indexed txIndex,
+        address indexed to,
+        uint value,
+        bytes data
+    );
+    event ConfirmTransaction(address indexed owner, uint indexed txIndex);
+    event RevokeConfirmation(address indexed owner, uint indexed txIndex);
+    event ExecuteTransaction(address indexed owner, uint indexed txIndex);
+    event OwnerAddition(address indexed owner);
+    event OwnerRemoval(address indexed owner);
+    event RequirementChange(uint required);
+
+    address[] public owners;
+    mapping(address => bool) public isOwner;
+    uint public numConfirmationsRequired;
+
+    struct Transaction {
+        address to;
+        uint value;
+        bytes data;
+        bool executed;
+        uint numConfirmations;
+    }
+
+    // mapping from tx index => owner => bool
+    mapping(uint => mapping(address => bool)) public isConfirmed;
+
+    Transaction[] public transactions;
+
+    modifier onlyOwner() {
+        require(isOwner[msg.sender], "Not owner");
+        _;
+    }
+
+    modifier txExists(uint _txIndex) {
+        require(_txIndex < transactions.length, "Tx does not exist");
+        _;
+    }
+
+    modifier notExecuted(uint _txIndex) {
+        require(!transactions[_txIndex].executed, "Tx already executed");
+        _;
+    }
+
+    modifier notConfirmed(uint _txIndex) {
+        require(!isConfirmed[_txIndex][msg.sender], "Tx already confirmed");
+        _;
+    }
+
+    constructor(address[] memory _owners, uint _numConfirmationsRequired) {
+        require(_owners.length > 0, "Owners required");
+        require(
+            _numConfirmationsRequired > 0 && _numConfirmationsRequired <= _owners.length,
+            "Invalid number of confirmations"
+        );
+
+        for (uint i = 0; i < _owners.length; i++) {
+            address owner = _owners[i];
+
+            require(owner != address(0), "Invalid owner");
+            require(!isOwner[owner], "Owner not unique");
+
+            isOwner[owner] = true;
+            owners.push(owner);
+        }
+
+        numConfirmationsRequired = _numConfirmationsRequired;
+    }
+
+    receive() external payable {
+        emit Deposit(msg.sender, msg.value, address(this).balance);
+    }
+
+    function submitTransaction(
+        address _to,
+        uint _value,
+        bytes memory _data
+    ) public onlyOwner {
+        uint txIndex = transactions.length;
+
+        transactions.push(
+            Transaction({
+                to: _to,
+                value: _value,
+                data: _data,
+                executed: false,
+                numConfirmations: 0
+            })
+        );
+
+        emit SubmitTransaction(msg.sender, txIndex, _to, _value, _data);
+    }
+
+    function confirmTransaction(uint _txIndex)
+        public
+        onlyOwner
+        txExists(_txIndex)
+        notExecuted(_txIndex)
+        notConfirmed(_txIndex)
+    {
+        Transaction storage transaction = transactions[_txIndex];
+        transaction.numConfirmations += 1;
+        isConfirmed[_txIndex][msg.sender] = true;
+
+        emit ConfirmTransaction(msg.sender, _txIndex);
+    }
+
+    function executeTransaction(uint _txIndex)
+        public
+        onlyOwner
+        txExists(_txIndex)
+        notExecuted(_txIndex)
+    {
+        Transaction storage transaction = transactions[_txIndex];
+
+        require(
+            transaction.numConfirmations >= numConfirmationsRequired,
+            "Cannot execute tx"
+        );
+
+        transaction.executed = true;
+
+        (bool success, ) = transaction.to.call{value: transaction.value}(
+            transaction.data
+        );
+        require(success, "Tx failed");
+
+        emit ExecuteTransaction(msg.sender, _txIndex);
+    }
+
+    function revokeConfirmation(uint _txIndex)
+        public
+        onlyOwner
+        txExists(_txIndex)
+        notExecuted(_txIndex)
+    {
+        Transaction storage transaction = transactions[_txIndex];
+
+        require(isConfirmed[_txIndex][msg.sender], "Tx not confirmed");
+
+        transaction.numConfirmations -= 1;
+        isConfirmed[_txIndex][msg.sender] = false;
+
+        emit RevokeConfirmation(msg.sender, _txIndex);
+    }
+
+    function getOwners() public view returns (address[] memory) {
+        return owners;
+    }
+
+    function getTransactionCount() public view returns (uint) {
+        return transactions.length;
+    }
+
+    function getTransaction(uint _txIndex)
+        public
+        view
+        returns (
+            address to,
+            uint value,
+            bytes memory data,
+            bool executed,
+            uint numConfirmations
+        )
+    {
+        Transaction storage transaction = transactions[_txIndex];
+
+        return (
+            transaction.to,
+            transaction.value,
+            transaction.data,
+            transaction.executed,
+            transaction.numConfirmations
+        );
+    }
+    
+    function addOwner(address _owner) public {
+        require(msg.sender == address(this), "Only wallet can add owner");
+        require(_owner != address(0), "Invalid owner");
+        require(!isOwner[_owner], "Owner exists");
+        
+        isOwner[_owner] = true;
+        owners.push(_owner);
+        
+        emit OwnerAddition(_owner);
+    }
+    
+    function removeOwner(address _owner) public {
+        require(msg.sender == address(this), "Only wallet can remove owner");
+        require(isOwner[_owner], "Not an owner");
+        require(owners.length - 1 >= numConfirmationsRequired, "Too few owners left");
+        
+        isOwner[_owner] = false;
+        
+        for (uint i = 0; i < owners.length; i++) {
+            if (owners[i] == _owner) {
+                owners[i] = owners[owners.length - 1];
+                owners.pop();
+                break;
+            }
+        }
+        
+        emit OwnerRemoval(_owner);
+    }
+    
+    function changeRequirement(uint _required) public {
+        require(msg.sender == address(this), "Only wallet can change requirement");
+        require(_required > 0 && _required <= owners.length, "Invalid required number");
+        
+        numConfirmationsRequired = _required;
+        
+        emit RequirementChange(_required);
+    }
+}`;
+};
+
+// Generate custom contract
+const generateCustomContract = (
+  contractName: string, 
+  features: ContractFeature[], 
+  prompt: string, 
+  seed: number, 
+  currentDate: string
+): string => {
+  let imports = [];
+  let inheritance = [];
+  
+  if (features.includes("ownable")) {
+    imports.push(`import "@openzeppelin/contracts/access/Ownable.sol";`);
+    inheritance.push("Ownable");
+  }
+  
+  if (features.includes("pausable")) {
+    imports.push(`import "@openzeppelin/contracts/security/Pausable.sol";`);
+    inheritance.push("Pausable");
+  }
+  
+  const importsText = imports.length > 0 ? imports.join("\n") + "\n\n" : "";
+  const inherits = inheritance.length > 0 ? ` is ${inheritance.join(", ")}` : "";
+  
+  return `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+${importsText}/**
+ * @title ${contractName}
+ * @dev Custom Contract auto-generated from: "${prompt}"
+ * @custom:generated-at ${currentDate}
+ * @custom:seed ${seed}
+ */
+contract ${contractName}${inherits} {
+    uint256 public value;
+    address public creator;
+    
+    event ValueChanged(address indexed changer, uint256 newValue);
+    
+    constructor() {
+        creator = msg.sender;
+    }
+    
+    function setValue(uint256 newValue) public ${features.includes("ownable") ? "onlyOwner" : ""} {
+        value = newValue;
+        emit ValueChanged(msg.sender, newValue);
+    }
+    
+    function getValue() public view returns (uint256) {
+        return value;
+    }
+    
+    ${features.includes("pausable") ? `
+    function pause() public onlyOwner {
+        _pause();
+    }
+    
+    function unpause() public onlyOwner {
+        _unpause();
+    }` : ``}
+}`;
+};
