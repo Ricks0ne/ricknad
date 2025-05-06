@@ -18,7 +18,7 @@ import {
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { MONAD_TESTNET } from "@/config/monad";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
-import { generateContract } from "@/utils/contractGenerator";
+import { generateContract } from "@/utils/enhancedContractGenerator";
 import { toast } from "sonner";
 import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
 import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
@@ -208,7 +208,9 @@ const ChatInterface: React.FC = () => {
       'solidity', 'smart contract', 'erc20', 'erc721', 'erc1155',
       'nft contract', 'token contract', 'write contract', 'code', 
       'implement contract', 'develop contract', 'staking contract',
-      'governance', 'dao', 'upgradeable', 'upgradable', 'proxy'
+      'governance', 'dao', 'upgradeable', 'upgradable', 'proxy',
+      'timelock', 'vesting', 'multisig', 'multi-sig', 'add burnable',
+      'add feature', 'add capability', 'make it upgradable'
     ];
     
     return contractKeywords.some(keyword => message.includes(keyword));
@@ -250,7 +252,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     setMessages(prev => [...prev, assistantMessage]);
   };
 
-  // Handle contract generation requests
+  // Handle contract generation requests - ENHANCED VERSION
   const handleContractRequest = async (message: string, messageId: string) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
@@ -259,7 +261,10 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       message.includes('contract') && 
       !message.includes('name') && 
       !message.includes('symbol') &&
-      !message.includes('called');
+      !message.includes('called') &&
+      !message.includes('create') &&
+      !message.includes('generate') &&
+      !message.includes('build');
     
     if (isGenericRequest) {
       // Ask for more details before generating
@@ -274,13 +279,16 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       return;
     }
     
-    // Generate a contract based on the message
+    // Generate a contract based on the message using enhanced generator
+    console.log('Generating contract from prompt:', message);
     const contractResult = generateContract(message);
+    
+    console.log('Generated contract:', contractResult);
     
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet. Would you like me to help you compile it?",
+      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your request. You can now compile and deploy it to the Monad Testnet.`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -404,12 +412,14 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       
       console.log("Compilation successful, setting contract data");
       
-      setCurrentContract({
-        ...currentContract,
+      // Update current contract with compiled data
+      setCurrentContract(prevState => ({
+        ...prevState,
         abi: generatedAbi,
         bytecode: validBytecodeSample
-      });
+      }));
       
+      // Set compilation status
       setIsCompiled(true);
       
       // Add a compilation success message
@@ -475,11 +485,11 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       const result = await deployContract(currentContract.abi, currentContract.bytecode, signer);
       
       // Update current contract
-      setCurrentContract({
-        ...currentContract,
+      setCurrentContract(prevState => ({
+        ...prevState,
         deployedAddress: result.address,
         deploymentTx: result.deploymentTx
-      });
+      }));
       
       // Add to deployed contracts list in local storage
       const newContract: DeployedContract = {
@@ -791,10 +801,10 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
                 {[
                   "What is Monad?",
                   "How does gas work?",
-                  "Create an ERC20 token",
-                  "Generate an NFT contract",
-                  "Make a staking contract",
-                  "Create upgradeable proxy"
+                  "Create an ERC20 token called MonadCoin",
+                  "Generate an NFT with royalties",
+                  "Make a staking contract with 30 day lock",
+                  "Create a DAO with 40% quorum"
                 ].map((suggestion) => (
                   <Button
                     key={suggestion}
