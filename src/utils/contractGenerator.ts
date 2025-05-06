@@ -2,6 +2,7 @@ import { ContractTemplate, ContractType, ContractFeature } from "@/types/blockch
 
 // Generate contract code based on the user's request
 export const generateContract = (prompt: string): { code: string; name: string; type: ContractType } => {
+  
   const promptLC = prompt.toLowerCase();
   const seed = Math.floor(Math.random() * 10000);
   const currentDate = new Date().toISOString();
@@ -781,7 +782,7 @@ const generateStakingContract = (
                       prompt.toLowerCase().includes("lock period") || 
                       prompt.toLowerCase().includes("vesting");
   
-  // Variables
+  // Variables - FIX: The uint25 was incomplete, changing to uint256
   let variables = [
     `// Staking token (what users deposit)
     IERC20 public stakingToken;
@@ -802,7 +803,4 @@ const generateStakingContract = (
     uint256 public rewardRate;
     
     // Last time reward amount was updated
-    uint256 public lastUpdateTime;
-    
-    // Reward per token stored
-    uint25
+    uint256
