@@ -88,11 +88,36 @@ const ChatInterface: React.FC = () => {
     const welcomeMessage: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: "Welcome to Ricknad's AI! Ask me anything about Monad or request me to generate a smart contract for you. I can answer your questions and create custom smart contracts based on your specifications.",
+      content: getTimeBasedGreeting(),
       timestamp: Date.now()
     };
     setMessages([welcomeMessage]);
   }, []);
+
+  // Function to get time-based greeting
+  const getTimeBasedGreeting = (): string => {
+    const hour = new Date().getHours();
+    
+    if (hour < 12) {
+      return "Good morning! 🌅 Welcome to Ricknad's AI. How can I help you today? You can ask me anything about Monad or request a custom smart contract.";
+    } else if (hour < 18) {
+      return "Good afternoon! 🌞 Welcome to Ricknad's AI. What can I do for you today? Feel free to ask about Monad or request a custom smart contract.";
+    } else {
+      return "Good evening! 🌙 Welcome to Ricknad's AI. How can I assist you tonight? You can ask me anything about Monad or request a custom smart contract.";
+    }
+  };
+
+  // Function to check if a message is a greeting
+  const isGreeting = (message: string): boolean => {
+    const lowerMessage = message.toLowerCase().trim();
+    const greetings = ['hi', 'hello', 'hey', 'greetings', 'howdy', 'hola', 'morning', 'afternoon', 'evening'];
+    
+    return greetings.some(greeting => 
+      lowerMessage === greeting || 
+      lowerMessage.startsWith(greeting + ' ') || 
+      lowerMessage.endsWith(' ' + greeting)
+    );
+  };
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
@@ -127,10 +152,14 @@ const ChatInterface: React.FC = () => {
     setIsTyping(true);
     
     try {
-      // Check if the message is asking for an explanation or a contract
       const normalizedInput = inputValue.toLowerCase().trim();
       
-      if (isContractRequest(normalizedInput)) {
+      // Check if the message is a greeting
+      if (isGreeting(normalizedInput)) {
+        await handleGreeting();
+      }
+      // Check if the message is asking for an explanation or a contract
+      else if (isContractRequest(normalizedInput)) {
         await handleContractRequest(normalizedInput, userMessage.id);
       } else {
         await handleExplanationRequest(normalizedInput, userMessage.id);
@@ -147,6 +176,20 @@ const ChatInterface: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  // Handle greeting messages
+  const handleGreeting = async () => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const greetingMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: "Hello! 👋 Welcome to Ricknad's AI. How can I assist you today? You can ask me anything about Monad or request a custom smart contract.",
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, greetingMessage]);
   };
 
   // Function to determine if a message is asking for a smart contract
@@ -202,13 +245,33 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
   const handleContractRequest = async (message: string, messageId: string) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // Check if this is a generic contract request or a specific one
+    const isGenericRequest = 
+      message.includes('contract') && 
+      !message.includes('name') && 
+      !message.includes('symbol') &&
+      !message.includes('called');
+    
+    if (isGenericRequest) {
+      // Ask for more details before generating
+      const detailRequestMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: "I'd be happy to create a smart contract for you. Could you provide some more details like the token name, symbol, or any specific functionality you need?",
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, detailRequestMessage]);
+      return;
+    }
+    
     // Generate a contract based on the message
     const contractResult = generateContract(message);
     
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet.",
+      content: "I've generated a smart contract based on your request. You can now compile and deploy it to the Monad Testnet. Would you like me to help you compile it?",
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -716,6 +779,21 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
         {/* Deployed Contracts List */}
         <DeployedContractsList onContractSelect={setSelectedDeployedContract} />
       </div>
+      
+      {/* Add footer with Twitter link */}
+      <footer className="mt-10 pb-6 text-center text-sm text-gray-500">
+        <p>
+          Follow me on X:{" "}
+          <a 
+            href="https://x.com/0xFred_" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-monad-accent hover:underline transition-colors"
+          >
+            @0xFred_
+          </a>
+        </p>
+      </footer>
     </div>
   );
 };
