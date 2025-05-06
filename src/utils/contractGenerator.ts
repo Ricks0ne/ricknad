@@ -339,8 +339,7 @@ const generateERC721Token = (
     functions.push(`
     function tokensOfOwner(address owner) public view returns (uint256[] memory) {
         uint256 balance = balanceOf(owner);
-        uint256[] memory tokenIds = new uint256[](balance);
-        
+        uint256[] memory tokenIds = new uint256[](balance);\n        
         for (uint256 i = 0; i < balance; i++) {
             tokenIds[i] = tokenOfOwnerByIndex(owner, i);
         }
@@ -780,26 +779,29 @@ const generateStakingContract = (
   const hasTimelock = prompt.toLowerCase().includes("timelock") || 
                       prompt.toLowerCase().includes("lock period") || 
                       prompt.toLowerCase().includes("vesting");
-                      
-  let stakingContractCode = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
-
-${imports.join("\n")}
-
-/**
- * @title ${contractName}
- * @dev Staking Contract auto-generated from: "${prompt}"
- * @custom:generated-at ${currentDate}
- * @custom:seed ${seed}
- */
-contract ${contractName} is ${inheritance.join(", ")} {
-    using SafeERC20 for IERC20;`;
-    
-  // Base variables for all staking contracts
-  stakingContractCode += `
-    
-    // Staking token (what users deposit)
+  
+  // Variables
+  let variables = [
+    `// Staking token (what users deposit)
     IERC20 public stakingToken;
     
     // Reward token (what users earn)
     IERC20 public rewardToken;
+    
+    // Duration of rewards to be paid out (in seconds)
+    uint256 public duration;
+    
+    // Timestamp when reward distribution ends
+    uint256 public finishAt;
+    
+    // Minimum staking period (in seconds)
+    uint256 public lockPeriod = 0;
+    
+    // Reward rate per second
+    uint256 public rewardRate;
+    
+    // Last time reward amount was updated
+    uint256 public lastUpdateTime;
+    
+    // Reward per token stored
+    uint25
