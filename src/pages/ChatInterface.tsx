@@ -12,7 +12,8 @@ import {
   ExternalLink, 
   Rocket, 
   MessageSquare, 
-  Search 
+  Search,
+  AlertCircle
 } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { MONAD_TESTNET } from "@/config/monad";
@@ -23,6 +24,12 @@ import { DeployedContract, SmartContract, ContractType } from "@/types/blockchai
 import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
 import DeployedContractsList from "@/components/contract/DeployedContractsList";
 import ContractVerification from "@/components/contract/ContractVerification";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Message {
   id: string;
@@ -46,6 +53,8 @@ const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [isCompiled, setIsCompiled] = useState(false);
+  const [compilationError, setCompilationError] = useState<string | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
   const [currentContract, setCurrentContract] = useState<{
     name: string;
@@ -281,6 +290,9 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     };
     
     setMessages(prev => [...prev, assistantMessage]);
+    // Reset compilation states when generating a new contract
+    setIsCompiled(false);
+    setCompilationError(null);
     setCurrentContract({
       name: contractResult.name,
       code: contractResult.code,
@@ -292,11 +304,17 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
 
   // Compile the current contract
   const compileContract = async () => {
-    if (!currentContract?.code) return;
+    if (!currentContract?.code) {
+      toast.error("No contract code to compile");
+      return;
+    }
     
     setIsCompiling(true);
+    setIsCompiled(false);
+    setCompilationError(null);
     
     try {
+      console.log("Starting contract compilation...");
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const hasStructs = currentContract.code.includes('struct');
@@ -384,11 +402,15 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       // Sample valid bytecode
       const validBytecodeSample = "0x608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063771602f714610030575b600080fd5b61004a6004803603810190610045919061009d565b610060565b60405161005791906100d9565b60405180910390f35b6000818361006e91906100f4565b905092915050565b600080fd5b6000819050919050565b61008a8161007d565b811461009557600080fd5b50565b6000813590506100a781610081565b92915050565b600080604083850312156100b4576100b3610079565b5b60006100c285828601610098565b92505060206100d385828601610098565b9150509250929050565b6100e38161007d565b82525050565b60006020820190506100fe60008301846100dc565b92915050565b7f4e487b710000000000000000000000000000000000000000000000000000000060e052604160045260246000fd5b600061013f8261007d565b915061014a8361007d565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0382111561017f5761017e610105565b5b82820190509291505056fea264697066735822122024d33be7c73c099cedba7e11787e893151b39c977d9712cce3a0db7f94ba066764736f6c634300080d0033";
       
+      console.log("Compilation successful, setting contract data");
+      
       setCurrentContract({
         ...currentContract,
         abi: generatedAbi,
         bytecode: validBytecodeSample
       });
+      
+      setIsCompiled(true);
       
       // Add a compilation success message
       const compilationMessage: Message = {
@@ -407,8 +429,10 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       
       setMessages(prev => [...prev, compilationMessage]);
       toast.success("Contract compiled successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error compiling contract:', err);
+      setIsCompiled(false);
+      setCompilationError(err?.message || 'Unknown compilation error');
       toast.error('Compilation failed');
       
       // Add a compilation error message
@@ -530,6 +554,19 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     return new Date(timestamp).toLocaleTimeString();
   };
 
+  // Helper function to determine if the deploy button should be disabled
+  const isDeployButtonDisabled = (): boolean => {
+    return !isCompiled || !currentContract?.abi || !currentContract?.bytecode || isDeploying || !isConnected;
+  };
+
+  // Helper function to get deploy button tooltip message
+  const getDeployButtonTooltip = (): string => {
+    if (!isConnected) return "Connect your wallet first";
+    if (!currentContract?.abi) return "Compile the contract first";
+    if (isDeploying) return "Deployment in progress...";
+    return "Deploy contract to Monad Testnet";
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8 animate-fade-in">
@@ -637,17 +674,26 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
                             {isCompiling ? 'Compiling...' : 'Compile'}
                           </Button>
                           
-                          {message.contractData?.abi && (
-                            <Button 
-                              size="sm" 
-                              className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
-                              onClick={deploySmartContract}
-                              disabled={isDeploying || !isConnected}
-                            >
-                              {isDeploying && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                              {isDeploying ? 'Deploying...' : 'Deploy'}
-                            </Button>
-                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                                    onClick={deploySmartContract}
+                                    disabled={isDeployButtonDisabled()}
+                                  >
+                                    {isDeploying && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                    {isDeploying ? 'Deploying...' : 'Deploy'}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{getDeployButtonTooltip()}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           
                           {message.contractData?.abi && (
                             <Button 
@@ -670,6 +716,16 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
                             </Button>
                           )}
                         </div>
+                        
+                        {compilationError && (
+                          <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200 text-left">
+                            <div className="flex items-center">
+                              <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
+                              <p className="text-sm text-red-700 font-medium">Compilation Error</p>
+                            </div>
+                            <p className="text-xs text-red-600 mt-1">{compilationError}</p>
+                          </div>
+                        )}
                         
                         {message.contractData?.deployedAddress && (
                           <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200 text-left">
