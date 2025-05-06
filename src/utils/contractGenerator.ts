@@ -339,7 +339,8 @@ const generateERC721Token = (
     functions.push(`
     function tokensOfOwner(address owner) public view returns (uint256[] memory) {
         uint256 balance = balanceOf(owner);
-        uint256[] memory tokenIds = new uint256[](balance);\n        
+        uint256[] memory tokenIds = new uint256[](balance);
+        
         for (uint256 i = 0; i < balance; i++) {
             tokenIds[i] = tokenOfOwnerByIndex(owner, i);
         }
@@ -773,7 +774,7 @@ const generateStakingContract = (
 
   // Enhanced staking contract with more features
   const isMultiToken = prompt.toLowerCase().includes("multi") && 
-                     (prompt.toLowerCase().includes("token") || prompt.toLowerCase().includes("reward"));
+                      (prompt.toLowerCase().includes("token") || prompt.toLowerCase().includes("reward"));
   
   // Check if timelock is needed
   const hasTimelock = prompt.toLowerCase().includes("timelock") || 
