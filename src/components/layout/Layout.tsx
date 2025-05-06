@@ -14,19 +14,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex min-h-screen bg-monad-secondary relative">
+    <div className="flex min-h-screen bg-monad-dark relative">
       {/* Main content */}
-      <main className={`flex-1 ${!isMobile ? 'pl-6 pr-64' : 'w-full px-4'} animate-fade-in`}>
-        <div className="container mx-auto py-6">
+      <main className={`flex-1 ${!isMobile ? 'pr-64' : 'w-full'} px-4 py-6 animate-fade-in`}>
+        <div className="container mx-auto">
           {/* Mobile menu button */}
           {isMobile && (
             <Button
-              variant="ghost"
+              variant="dark"
               size="icon"
               className="fixed top-4 right-4 z-50"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5 text-white" />
             </Button>
           )}
           
@@ -34,9 +34,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </main>
 
-      {/* Sidebar - now on the right side */}
+      {/* Sidebar - on the right side */}
       <div className={`
-        ${isMobile ? 'fixed right-0 top-0 bottom-0 transition-transform duration-300 transform z-40' : 'fixed right-0 top-0 h-full'}
+        ${isMobile ? 'fixed right-0 top-0 bottom-0 transition-all duration-300 transform z-40' : 'fixed right-0 top-0 h-full'}
         ${isMobile && !isSidebarOpen ? 'translate-x-full' : 'translate-x-0'}
       `}>
         <Sidebar onClose={() => setIsSidebarOpen(false)} />

@@ -86,7 +86,7 @@ const MonadMetrics = () => {
   ];
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 bg-black/40 border border-white/10">
       <CardHeader>
         <CardTitle>Network Metrics</CardTitle>
       </CardHeader>
@@ -95,9 +95,9 @@ const MonadMetrics = () => {
           {metrics.map((metric) => (
             <div
               key={metric.title}
-              className="bg-monad-dark p-4 rounded-lg text-monad-light flex flex-col items-center justify-center text-center"
+              className="bg-black/40 rounded-lg text-white flex flex-col items-center justify-center text-center p-4 border border-white/10 hover:border-monad-primary/30 transition-all duration-300"
             >
-              <metric.icon className="h-6 w-6 mb-2 text-monad-accent" />
+              <metric.icon className="h-6 w-6 mb-2 text-monad-primary" />
               <h3 className="text-sm font-medium text-gray-400">{metric.title}</h3>
               <p className="text-lg font-bold mt-1">{metric.value}</p>
             </div>

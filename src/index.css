@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,84 +7,86 @@
 
 @layer base {
   :root {
-    --background: 0 0% 94%;  /* Light gray (#F0F0F0) */
-    --foreground: 222.2 84% 4.9%;
+    /* Dark theme inspired by Monad Testnet */
+    --background: 0 0% 4%;  /* Dark charcoal (#0A0A0A) */
+    --foreground: 0 0% 100%;  /* White (#FFFFFF) */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 6%;  /* Slightly lighter than background */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Updated colors based on Monad theme */
-    --primary: 165 45% 33%;  /* Dark teal (#2E7B6D) */
-    --primary-foreground: 0 0% 100%;
+    /* Updated colors based on Monad Testnet theme */
+    --primary: 180 100% 74%;  /* Electric blue (#7DF9FF) */
+    --primary-foreground: 0 0% 4%;  /* Dark charcoal for text on primary */
 
-    --secondary: 0 0% 94%;  /* Light gray (#F0F0F0) */
-    --secondary-foreground: 165 45% 33%;
+    --secondary: 156 100% 50%;  /* Bright green (#00FF9C) */
+    --secondary-foreground: 0 0% 4%;  /* Dark charcoal for text on secondary */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 20%;  /* Dark grey */
+    --muted-foreground: 0 0% 70%;  /* Light grey */
 
-    --accent: 187 100% 74%;  /* Electric blue (#7DF9FF) */
-    --accent-foreground: 165 45% 33%;
+    --accent: 180 100% 74%;  /* Same as primary */
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 165 45% 33%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 180 100% 74%;  /* Electric blue for focus rings */
 
-    --radius: 0.75rem; /* Increased radius for more rounded corners */
+    --radius: 0.5rem;  /* Subtle border radius */
 
-    /* Sidebar colors - set to black with white text */
-    --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 165 45% 33%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 187 100% 74%;
+    /* Sidebar colors - dark with electric blue accents */
+    --sidebar-background: 0 0% 0%;  /* Black (#000000) */
+    --sidebar-foreground: 0 0% 100%;  /* White (#FFFFFF) */
+    --sidebar-primary: 180 100% 74%;  /* Electric blue (#7DF9FF) */
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 156 100% 50%;  /* Bright green */
     --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 187 100% 74%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 180 100% 74%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 180 100% 74%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 156 100% 50%;
+    --secondary-foreground: 0 0% 4%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 180 100% 74%;
+    --accent-foreground: 0 0% 4%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 180 100% 74%;
+    
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 180 100% 74%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 156 100% 50%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 180 100% 74%;
   }
 }
 
@@ -100,6 +102,10 @@
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight font-grotesk;
+  }
+  
+  code, pre {
+    @apply font-mono;
   }
 }
 
@@ -125,7 +131,20 @@
     @apply transition-all duration-300;
   }
   .hover-glow:hover {
-    @apply border-monad-accent shadow-lg shadow-monad-accent/20;
+    @apply shadow-lg shadow-monad-primary/20;
+  }
+
+  /* Glassmorphism effects */
+  .card-glass {
+    @apply bg-black/40 backdrop-blur-md border border-white/10;
+  }
+  
+  .monad-glow {
+    box-shadow: 0 0 15px 2px rgba(125, 249, 255, 0.25);
+  }
+  
+  .monad-border {
+    @apply border border-monad-primary/50;
   }
 }
 
@@ -174,28 +193,28 @@ button:active:not(:disabled) {
 
 /* Card styles */
 .card {
-  @apply rounded-2xl border shadow-sm;
+  @apply rounded-xl border border-white/10 bg-card shadow-sm;
 }
 
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:shadow-monad-accent/10;
+  @apply transition-all duration-300 hover:shadow-lg hover:shadow-monad-primary/20;
 }
 
 /* Neon accent effects */
 .neon-border {
-  @apply border border-monad-accent shadow-lg shadow-monad-accent/20;
+  @apply border border-monad-primary shadow-lg shadow-monad-primary/30;
 }
 
 .neon-text {
-  @apply text-monad-accent;
+  @apply text-monad-primary;
   text-shadow: 0 0 5px rgba(125, 249, 255, 0.5);
 }
 
 /* Chat bubble styles */
 .chat-bubble-ai {
-  @apply bg-monad-primary text-white rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-monad-dark text-white border border-monad-primary/20 rounded-2xl p-4 animate-fade-in shadow-sm;
 }
 
 .chat-bubble-user {
-  @apply bg-white rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-black/50 border border-white/10 rounded-2xl p-4 animate-fade-in shadow-sm;
 }
