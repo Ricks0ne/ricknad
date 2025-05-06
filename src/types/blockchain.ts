@@ -44,9 +44,33 @@ export interface NetworkInfo {
   };
 }
 
-export type ContractType = 'erc20' | 'erc721' | 'erc1155' | 'staking' | 'governance' | 'proxy' | 'custom';
+export type ContractType = 
+  | 'erc20' 
+  | 'erc721' 
+  | 'erc1155' 
+  | 'erc4626' 
+  | 'staking' 
+  | 'governance' 
+  | 'proxy' 
+  | 'escrow' 
+  | 'multisig' 
+  | 'custom';
 
-export type ContractFeature = 'pausable' | 'ownable' | 'mintable' | 'burnable' | 'capped' | 'roles' | 'timelock';
+export type ContractFeature = 
+  | 'pausable' 
+  | 'ownable' 
+  | 'mintable' 
+  | 'burnable' 
+  | 'capped' 
+  | 'roles' 
+  | 'timelock'
+  | 'batchable'
+  | 'uups'
+  | 'transparentUpgradeable'
+  | 'diamond'
+  | 'merkleProof'
+  | 'royalties'
+  | 'permit';
 
 export interface ContractTemplate {
   name: string;
