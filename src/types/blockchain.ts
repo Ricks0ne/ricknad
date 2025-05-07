@@ -46,14 +46,19 @@ export interface NetworkInfo {
 
 export type ContractType = 
   | 'erc20' 
+  | 'erc20Upgradeable'
   | 'erc721' 
   | 'erc1155' 
   | 'erc4626' 
   | 'staking' 
   | 'governance' 
+  | 'dao'
   | 'proxy' 
   | 'escrow' 
-  | 'multisig' 
+  | 'multisig'
+  | 'timelock'
+  | 'vesting'
+  | 'upgradeable'
   | 'custom';
 
 export type ContractFeature = 
