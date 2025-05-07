@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +14,8 @@ import {
   Rocket, 
   MessageSquare, 
   Search,
-  AlertCircle
+  AlertCircle,
+  Send
 } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { MONAD_TESTNET } from "@/config/monad";
@@ -33,7 +35,7 @@ import {
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
   contractData?: {
@@ -66,30 +68,21 @@ const ChatInterface: React.FC = () => {
     deploymentTx?: string;
   } | null>(null);
   const [selectedDeployedContract, setSelectedDeployedContract] = useState<DeployedContract | null>(null);
+  const [conversationContext, setConversationContext] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Mock explanations from Monad documentation with more technical detail
-  const explanations = {
-    "what is monad": {
-      content: "Monad is a high-performance Layer 1 blockchain designed for maximum throughput and decentralization. It features a specialized parallel transaction processing architecture that allows for concurrent execution of smart contracts, enabling significantly higher throughput compared to traditional blockchains without sacrificing security or decentralization.",
-      sources: ["https://docs.monad.xyz/overview"]
-    },
-    "how fast is monad": {
-      content: "Monad delivers exceptional performance with thousands of transactions per second and sub-second finality. The parallel execution model identifies non-conflicting transactions that can be executed simultaneously, dramatically improving throughput while maintaining EVM compatibility. This architecture enables Monad to scale efficiently with increasing hardware capacity.",
-      sources: ["https://docs.monad.xyz/overview", "https://www.monad.xyz/blog/performance"]
-    },
-    "what language does monad use": {
-      content: "Monad is fully EVM-compatible, supporting Solidity version 0.8.20 and above. This ensures seamless migration of existing Ethereum dApps to Monad with minimal or no code changes. You can use standard Solidity development tools like Hardhat, Foundry, and Remix with Monad, leveraging the mature Ethereum development ecosystem.",
-      sources: ["https://docs.monad.xyz/developers/guide"]
-    },
-    "how does gas work": {
-      content: "Gas in Monad works similarly to Ethereum. It's a unit that measures computational effort required to execute operations. Each operation has a fixed gas cost, and users specify a gas price they're willing to pay. Monad's parallel execution model helps optimize gas usage, leading to lower transaction costs compared to traditional blockchains.",
-      sources: ["https://docs.monad.xyz/developers/guide"]
-    },
-    "default": {
-      content: "Monad is a high-performance Layer 1 blockchain built from the ground up for scalability without sacrificing decentralization. It features parallel transaction execution, EVM compatibility for easy migration of Ethereum dApps, and a novel consensus mechanism designed for high throughput and security.",
-      sources: ["https://docs.monad.xyz/overview", "https://www.monad.xyz/blog"]
-    }
+  
+  // System prompt that defines Monad AI's behavior
+  const systemPrompt: Message = {
+    id: 'system-prompt',
+    role: 'system',
+    content: `You are Monad AI, an expert Solidity developer assistant integrated into the Ricknad platform. 
+    Your primary function is to assist users in generating and refining Ethereum-compatible smart contracts 
+    for the Monad blockchain through an interactive, conversational interface.
+    
+    Utilize Solidity version ^0.8.20 and incorporate the latest stable OpenZeppelin libraries compatible with the Monad EVM.
+    Ensure all generated code is syntactically correct, includes necessary comments, and avoids placeholders or incomplete sections.
+    Support ERC20 tokens, NFTs, staking contracts, upgradeable contracts, DAOs, multi-token contracts, vesting schedules, and SBTs.`,
+    timestamp: Date.now()
   };
 
   // Add a welcome message when the component mounts
@@ -101,6 +94,8 @@ const ChatInterface: React.FC = () => {
       timestamp: Date.now()
     };
     setMessages([welcomeMessage]);
+    // Initialize conversation context with system prompt
+    setConversationContext([systemPrompt]);
   }, []);
 
   // Function to get time-based greeting
@@ -146,6 +141,31 @@ const ChatInterface: React.FC = () => {
     }
   }, []);
 
+  // Function to call OpenAI API
+  const callOpenAI = async (userMessage: string): Promise<string> => {
+    try {
+      // In a real implementation, this would be an API call to your backend
+      // For now, we'll simulate a response based on the message content
+      console.log("Sending to OpenAI:", userMessage);
+      console.log("Conversation context:", conversationContext);
+      
+      // For demonstration, use the local contract generator
+      if (userMessage.toLowerCase().includes('contract') || 
+          userMessage.toLowerCase().includes('token') ||
+          userMessage.toLowerCase().includes('nft')) {
+        const contractResult = generateContract(userMessage);
+        return `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices.`;
+      }
+      
+      // Simulate a delay to mimic API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return "Based on your request, I would recommend using the latest OpenZeppelin contracts with Solidity 0.8.20. Would you like me to generate a specific contract for you?";
+    } catch (error) {
+      console.error("Error calling OpenAI:", error);
+      throw new Error("Failed to get response from AI service");
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
     
@@ -159,6 +179,9 @@ const ChatInterface: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
+    
+    // Add user message to conversation context
+    setConversationContext(prev => [...prev, userMessage]);
     
     try {
       const normalizedInput = inputValue.toLowerCase().trim();
@@ -199,6 +222,8 @@ const ChatInterface: React.FC = () => {
     };
     
     setMessages(prev => [...prev, greetingMessage]);
+    // Add assistant message to conversation context
+    setConversationContext(prev => [...prev, greetingMessage]);
   };
 
   // Function to determine if a message is asking for a smart contract
@@ -220,43 +245,29 @@ const ChatInterface: React.FC = () => {
 
   // Handle explanation requests with more technical detail
   const handleExplanationRequest = async (message: string, messageId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Find the most relevant explanation
-    let result;
-    for (const [key, value] of Object.entries(explanations)) {
-      if (message.includes(key)) {
-        result = value;
-        break;
-      }
+    try {
+      // Get response from OpenAI
+      const aiResponse = await callOpenAI(message);
+      
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      // Add assistant message to conversation context
+      setConversationContext(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Failed to get AI explanation:", error);
+      toast.error("Failed to get response from AI");
     }
-    
-    // Use default if no match found
-    if (!result) {
-      result = explanations.default;
-    }
-    
-    // Format the answer with sources
-    const formattedAnswer = `
-${result.content}
-
-Sources:
-${result.sources.map(source => `- [${source}](${source})`).join('\n')}
-    `;
-    
-    const assistantMessage: Message = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content: formattedAnswer,
-      timestamp: Date.now()
-    };
-    
-    setMessages(prev => [...prev, assistantMessage]);
   };
 
   // Enhanced contract request handling with context awareness
   const handleContractRequest = async (message: string, messageId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Check if this is a modification to an existing contract
     const isModification = message.toLowerCase().includes('add') || 
@@ -275,6 +286,8 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       };
       
       setMessages(prev => [...prev, modificationRequestMessage]);
+      // Add assistant message to conversation context
+      setConversationContext(prev => [...prev, modificationRequestMessage]);
     }
     
     // Check if this is a generic contract request or a specific one
@@ -297,11 +310,16 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       };
       
       setMessages(prev => [...prev, detailRequestMessage]);
+      // Add assistant message to conversation context
+      setConversationContext(prev => [...prev, detailRequestMessage]);
       return;
     }
     
     // Generate a contract based on the message using enhanced generator
+    // In a real implementation, you would use context from the conversation
     console.log('Generating contract from prompt:', message);
+    console.log('Using conversation context:', conversationContext);
+    
     const contractResult = generateContract(message);
     
     console.log('Generated contract:', contractResult);
@@ -319,6 +337,9 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     };
     
     setMessages(prev => [...prev, assistantMessage]);
+    // Add assistant message to conversation context
+    setConversationContext(prev => [...prev, assistantMessage]);
+    
     // Reset compilation states when generating a new contract
     setIsCompiled(false);
     setCompilationError(null);
@@ -811,7 +832,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
                 {isTyping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  'Send'
+                  <Send className="h-4 w-4" />
                 )}
               </Button>
             </div>
