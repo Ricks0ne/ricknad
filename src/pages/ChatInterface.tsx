@@ -68,18 +68,18 @@ const ChatInterface: React.FC = () => {
   const [selectedDeployedContract, setSelectedDeployedContract] = useState<DeployedContract | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock explanations from Monad documentation
+  // Mock explanations from Monad documentation with more technical detail
   const explanations = {
     "what is monad": {
-      content: "Monad is a high-performance Layer 1 blockchain designed for maximum performance and decentralization. It features a specialized transaction processing architecture that allows for parallel execution of smart contracts, enabling much higher throughput compared to traditional blockchain architectures.",
+      content: "Monad is a high-performance Layer 1 blockchain designed for maximum throughput and decentralization. It features a specialized parallel transaction processing architecture that allows for concurrent execution of smart contracts, enabling significantly higher throughput compared to traditional blockchains without sacrificing security or decentralization.",
       sources: ["https://docs.monad.xyz/overview"]
     },
     "how fast is monad": {
-      content: "Monad delivers high throughput and low latency. It can process thousands of transactions per second with sub-second finality, thanks to its parallel execution model and optimized architecture.",
-      sources: ["https://docs.monad.xyz/overview"]
+      content: "Monad delivers exceptional performance with thousands of transactions per second and sub-second finality. The parallel execution model identifies non-conflicting transactions that can be executed simultaneously, dramatically improving throughput while maintaining EVM compatibility. This architecture enables Monad to scale efficiently with increasing hardware capacity.",
+      sources: ["https://docs.monad.xyz/overview", "https://www.monad.xyz/blog/performance"]
     },
     "what language does monad use": {
-      content: "Monad is fully EVM-compatible, which means it supports Solidity, the same programming language used by Ethereum. This allows developers to easily port their existing Ethereum dApps to Monad without changing the code.",
+      content: "Monad is fully EVM-compatible, supporting Solidity version 0.8.20 and above. This ensures seamless migration of existing Ethereum dApps to Monad with minimal or no code changes. You can use standard Solidity development tools like Hardhat, Foundry, and Remix with Monad, leveraging the mature Ethereum development ecosystem.",
       sources: ["https://docs.monad.xyz/developers/guide"]
     },
     "how does gas work": {
@@ -108,11 +108,11 @@ const ChatInterface: React.FC = () => {
     const hour = new Date().getHours();
     
     if (hour < 12) {
-      return "Good morning! 🌅 Welcome to Ricknad's AI. How can I help you today? You can ask me anything about Monad or request a custom smart contract.";
+      return "Good morning! 🌅 I'm Monad AI, your expert Solidity developer assistant. How can I help with your smart contract development today? Whether you need a new contract or want to modify an existing one, I'm here to assist.";
     } else if (hour < 18) {
-      return "Good afternoon! 🌞 Welcome to Ricknad's AI. What can I do for you today? Feel free to ask about Monad or request a custom smart contract.";
+      return "Good afternoon! 🌞 I'm Monad AI, your expert Solidity developer assistant. What kind of smart contract would you like to work on today? I can help with tokens, NFTs, staking, DAOs, or custom implementations.";
     } else {
-      return "Good evening! 🌙 Welcome to Ricknad's AI. How can I assist you tonight? You can ask me anything about Monad or request a custom smart contract.";
+      return "Good evening! 🌙 I'm Monad AI, your expert Solidity developer assistant. Looking to develop smart contracts for Monad? I can help you create or refine any Ethereum-compatible contract with the latest Solidity standards.";
     }
   };
 
@@ -194,7 +194,7 @@ const ChatInterface: React.FC = () => {
     const greetingMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: "Hello! 👋 Welcome to Ricknad's AI. How can I assist you today? You can ask me anything about Monad or request a custom smart contract.",
+      content: "Hello! 👋 I'm Monad AI, your expert Solidity developer assistant. I can help you create or modify smart contracts for the Monad blockchain. What type of contract would you like to work on today?",
       timestamp: Date.now()
     };
     
@@ -210,13 +210,15 @@ const ChatInterface: React.FC = () => {
       'implement contract', 'develop contract', 'staking contract',
       'governance', 'dao', 'upgradeable', 'upgradable', 'proxy',
       'timelock', 'vesting', 'multisig', 'multi-sig', 'add burnable',
-      'add feature', 'add capability', 'make it upgradable'
+      'add feature', 'add capability', 'make it upgradable', 'royalties',
+      'modify', 'update contract', 'improve', 'airdrop', 'soulbound',
+      'metadata', 'reveal'
     ];
     
-    return contractKeywords.some(keyword => message.includes(keyword));
+    return contractKeywords.some(keyword => message.toLowerCase().includes(keyword));
   };
 
-  // Handle explanation requests
+  // Handle explanation requests with more technical detail
   const handleExplanationRequest = async (message: string, messageId: string) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -252,9 +254,28 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     setMessages(prev => [...prev, assistantMessage]);
   };
 
-  // Handle contract generation requests - ENHANCED VERSION
+  // Enhanced contract request handling with context awareness
   const handleContractRequest = async (message: string, messageId: string) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check if this is a modification to an existing contract
+    const isModification = message.toLowerCase().includes('add') || 
+                         message.toLowerCase().includes('update') || 
+                         message.toLowerCase().includes('modify') ||
+                         message.toLowerCase().includes('change');
+    
+    // If current contract exists and this is a modification request, use that context
+    if (isModification && currentContract?.code) {
+      // Generate a response acknowledging the modification request
+      const modificationRequestMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: `I'll modify the current ${currentContract.type} contract to implement your request. Generating updated code...`,
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, modificationRequestMessage]);
+    }
     
     // Check if this is a generic contract request or a specific one
     const isGenericRequest = 
@@ -271,7 +292,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
       const detailRequestMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "I'd be happy to create a smart contract for you. Could you provide some more details like the token name, symbol, or any specific functionality you need?",
+        content: "I'd be happy to create a smart contract for you. Could you provide some specific details like the token name, symbol, or functionality you need? For example, do you want an ERC20 token, NFT collection, staking mechanism, or something else?",
         timestamp: Date.now()
       };
       
@@ -288,7 +309,7 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your request. You can now compile and deploy it to the Monad Testnet.`,
+      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Monad Testnet.`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -580,9 +601,9 @@ ${result.sources.map(source => `- [${source}](${source})`).join('\n')}
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad Rick 👨‍🔬</h1>
+        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad AI 👨‍🔬</h1>
         <p className="text-lg text-gray-600 italic">
-          Generate smart contracts & ask Monad AI anything
+          Expert Solidity developer assistant for the Monad blockchain
         </p>
       </div>
 

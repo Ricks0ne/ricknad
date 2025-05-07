@@ -59,6 +59,8 @@ export type ContractType =
   | 'timelock'
   | 'vesting'
   | 'upgradeable'
+  | 'soulbound'
+  | 'airdrop'
   | 'custom';
 
 export type ContractFeature = 
@@ -75,7 +77,13 @@ export type ContractFeature =
   | 'diamond'
   | 'merkleProof'
   | 'royalties'
-  | 'permit';
+  | 'permit'
+  | 'metadata'
+  | 'reveal'
+  | 'soulbound'
+  | 'votingDelay'
+  | 'quorum'
+  | 'cliffVesting';
 
 export interface ContractTemplate {
   name: string;
