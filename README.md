@@ -36,4 +36,4 @@ It offers smart contract generation, real-time metrics, and interactive blockcha
 - Built with React, TypeScript, Ethers.js, and Tailwind CSS
 - Responsive UI with smooth animations
 
-Built with passion. 🚀
+Built with passion. ✨️
