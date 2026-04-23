@@ -36,7 +36,7 @@ export interface NetworkInfo {
   name: string;
   rpcUrl: string;
   blockExplorerUrl: string;
-  faucet: string;
+  faucet?: string;
   currency: {
     name: string;
     symbol: string;

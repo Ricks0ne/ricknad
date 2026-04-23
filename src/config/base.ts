@@ -2,12 +2,11 @@
 import { NetworkInfo } from "../types/blockchain";
 
 // Base Mainnet Configuration
-export const BASE_TESTNET: NetworkInfo = {
+export const BASE_MAINNET: NetworkInfo = {
   chainId: "8453",
-  name: "Base",
+  name: "Base Mainnet",
   rpcUrl: "https://mainnet.base.org",
   blockExplorerUrl: "https://basescan.org",
-  faucet: "https://www.base.org/",
   currency: {
     name: "Ether",
     symbol: "ETH",
@@ -15,13 +14,17 @@ export const BASE_TESTNET: NetworkInfo = {
   },
 };
 
-// Resource Links
+// Backwards-compatible alias used across the codebase
+export const BASE_TESTNET = BASE_MAINNET;
+
+// Resource Links — sourced from https://docs.base.org
 export const BASE_RESOURCES = {
   documentation: "https://docs.base.org/",
   github: "https://github.com/base-org",
   explorer: "https://basescan.org/",
   blog: "https://base.mirror.xyz/",
-  faucet: "https://www.base.org/"
+  bridge: "https://bridge.base.org/",
+  ecosystem: "https://www.base.org/ecosystem",
 };
 
 // Default Solidity Example for Contract Generator

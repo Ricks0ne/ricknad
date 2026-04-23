@@ -142,28 +142,87 @@ const ChatInterface: React.FC = () => {
     }
   }, []);
 
-  // Function to call OpenAI API
+  // Local Base knowledge base sourced from https://docs.base.org
+  // Each entry has trigger keywords and a docs-grounded answer with source links.
+  const baseKnowledge: Array<{ keywords: string[]; answer: string }> = [
+    {
+      keywords: ['what is base', 'about base', 'tell me about base', 'base network', 'base blockchain'],
+      answer:
+        "Base is a secure, low-cost, builder-friendly Ethereum Layer 2 (L2) incubated by Coinbase. It's built on the OP Stack (Optimism) and inherits security from Ethereum while offering fast, cheap transactions in ETH.\n\nKey facts:\n- Network Name: Base Mainnet\n- Chain ID: 8453\n- RPC URL: https://mainnet.base.org\n- Currency: ETH\n- Block Explorer: https://basescan.org\n\nSources:\n- [Base Overview](https://docs.base.org/base-chain/network-information/base-contracts)\n- [About Base](https://www.base.org/)",
+    },
+    {
+      keywords: ['gas', 'fee', 'cost', 'transaction fee'],
+      answer:
+        "Base uses ETH for gas. Because it's an Optimistic Rollup on the OP Stack, fees are typically a small fraction of Ethereum L1 fees. Gas pricing follows EIP-1559 (baseFee + priority tip).\n\nSources:\n- [Network Information](https://docs.base.org/base-chain/network-information/base-contracts)\n- [Fees on Base](https://docs.base.org/learn/transactions-and-fees/transactions-and-fees-on-base)",
+    },
+    {
+      keywords: ['bridge', 'bridging', 'move eth to base', 'l1 to l2'],
+      answer:
+        "You can bridge ETH and tokens between Ethereum Mainnet and Base using the official bridge at https://bridge.base.org. Withdrawals from Base back to L1 use the standard Optimistic 7-day challenge period.\n\nSources:\n- [Bridges on Base](https://docs.base.org/learn/bridging/bridging-on-base)\n- [Official Bridge](https://bridge.base.org/)",
+    },
+    {
+      keywords: ['rpc', 'endpoint', 'connect', 'add network', 'metamask'],
+      answer:
+        "Add Base Mainnet to your wallet with these settings:\n- Network Name: Base Mainnet\n- RPC URL: https://mainnet.base.org\n- Chain ID: 8453\n- Currency Symbol: ETH\n- Block Explorer: https://basescan.org\n\nSources:\n- [Network Information](https://docs.base.org/base-chain/network-information/base-contracts)",
+    },
+    {
+      keywords: ['op stack', 'optimism', 'rollup', 'l2', 'layer 2'],
+      answer:
+        "Base is built on the OP Stack — the open-source modular framework powering Optimism. This makes Base an Optimistic Rollup that posts transaction data to Ethereum L1 for security, while executing transactions cheaply on L2.\n\nSources:\n- [Base & the OP Stack](https://docs.base.org/learn/welcome)",
+    },
+    {
+      keywords: ['verify', 'verification', 'basescan', 'sourcify'],
+      answer:
+        "Verify deployed contracts on Basescan (https://basescan.org) by submitting source code, compiler version and optimization settings. You can also verify via Sourcify or Hardhat/Foundry plugins.\n\nSources:\n- [Verify a Smart Contract](https://docs.base.org/cookbook/contracts/verify-smart-contract)",
+    },
+    {
+      keywords: ['deploy', 'deployment', 'hardhat', 'foundry'],
+      answer:
+        "You can deploy any EVM-compatible Solidity contract to Base Mainnet using Hardhat, Foundry, Remix, or this BasedRicks chat. Compile with Solidity ^0.8.20, point your tooling at https://mainnet.base.org with chain id 8453, and ensure your wallet holds ETH for gas.\n\nSources:\n- [Deploy on Base with Hardhat](https://docs.base.org/cookbook/contracts/deploy-with-hardhat)\n- [Deploy with Foundry](https://docs.base.org/cookbook/contracts/deploy-with-foundry)",
+    },
+    {
+      keywords: ['onchain', 'identity', 'basename', 'ens'],
+      answer:
+        "Base supports Basenames — human-readable names (like yourname.base.eth) for onchain identity, built on ENS. They make wallet addresses easier to share and integrate with apps.\n\nSources:\n- [Basenames](https://www.base.org/names)\n- [Identity on Base](https://docs.base.org/identity/basenames/basenames-overview)",
+    },
+  ];
+
+  const findBaseAnswer = (message: string): string | null => {
+    const lower = message.toLowerCase();
+    for (const entry of baseKnowledge) {
+      if (entry.keywords.some(k => lower.includes(k))) return entry.answer;
+    }
+    return null;
+  };
+
+  // Function to generate AI response (grounded in docs.base.org knowledge base)
   const callOpenAI = async (userMessage: string): Promise<string> => {
     try {
-      // In a real implementation, this would be an API call to your backend
-      // For now, we'll simulate a response based on the message content
-      console.log("Sending to OpenAI:", userMessage);
-      console.log("Conversation context:", conversationContext);
-      
-      // For demonstration, use the local contract generator
-      if (userMessage.toLowerCase().includes('contract') || 
-          userMessage.toLowerCase().includes('token') ||
-          userMessage.toLowerCase().includes('nft')) {
+      console.log("Generating Base AI response for:", userMessage);
+      console.log("Conversation context length:", conversationContext.length);
+
+      // Simulate slight latency for natural feel
+      await new Promise(resolve => setTimeout(resolve, 700));
+
+      // Try Base docs knowledge base first
+      const baseAnswer = findBaseAnswer(userMessage);
+      if (baseAnswer) return baseAnswer;
+
+      // Contract-related fallbacks
+      if (
+        userMessage.toLowerCase().includes('contract') ||
+        userMessage.toLowerCase().includes('token') ||
+        userMessage.toLowerCase().includes('nft')
+      ) {
         const contractResult = generateContract(userMessage);
-        return `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices.`;
+        return `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract uses Solidity ^0.8.20 with the latest OpenZeppelin libraries and follows Base best practices.\n\nSources:\n- [Smart Contracts on Base](https://docs.base.org/cookbook/contracts/deploy-with-hardhat)`;
       }
-      
-      // Simulate a delay to mimic API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return "Based on your request, I would recommend using the latest OpenZeppelin contracts with Solidity 0.8.20. Would you like me to generate a specific contract for you?";
+
+      // Generic helpful fallback that always points to docs.base.org
+      return `I'm Base AI — I source my answers from the official Base documentation at https://docs.base.org.\n\nI can help you with:\n- Base network details (Mainnet, Chain ID 8453, RPC https://mainnet.base.org)\n- Bridging ETH between Ethereum and Base\n- Deploying & verifying smart contracts on Base\n- Generating ERC20, ERC721, ERC1155, staking, DAO, vesting and upgradeable contracts\n\nTry asking: "What is Base?", "How do I bridge to Base?", or "Create an ERC20 token called BaseCoin".\n\nSources:\n- [docs.base.org](https://docs.base.org/)`;
     } catch (error) {
-      console.error("Error calling OpenAI:", error);
-      throw new Error("Failed to get response from AI service");
+      console.error("Error generating Base AI response:", error);
+      throw new Error("Failed to get response from Base AI");
     }
   };
 
@@ -328,7 +387,7 @@ const ChatInterface: React.FC = () => {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Sepolia.`,
+      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Mainnet.`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -469,7 +528,7 @@ const ChatInterface: React.FC = () => {
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "Contract compiled successfully! You can now deploy it to the Base Sepolia.",
+        content: "Contract compiled successfully! You can now deploy it to the Base Mainnet.",
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -519,7 +578,7 @@ const ChatInterface: React.FC = () => {
       if (account) {
         const hasEnough = await hasEnoughBalance(account);
         if (!hasEnough) {
-          throw new Error("Insufficient balance for deployment. Please get tokens from the faucet.");
+          throw new Error("Insufficient ETH balance on Base Mainnet to cover deployment gas. Please bridge ETH to Base via https://bridge.base.org/.");
         }
       }
       
@@ -560,7 +619,7 @@ const ChatInterface: React.FC = () => {
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Contract deployed successfully to the Base Sepolia at address ${result.address}`,
+        content: `Contract deployed successfully to the Base Mainnet at address ${result.address}`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -617,7 +676,7 @@ const ChatInterface: React.FC = () => {
     if (!isConnected) return "Connect your wallet first";
     if (!currentContract?.abi) return "Compile the contract first";
     if (isDeploying) return "Deployment in progress...";
-    return "Deploy contract to Base Sepolia";
+    return "Deploy contract to Base Mainnet";
   };
 
   return (
@@ -635,7 +694,7 @@ const ChatInterface: React.FC = () => {
             <Alert className="bg-gradient-to-r from-base-primary/10 to-base-primary/5 border-base-primary/20">
               <FileCode className="h-5 w-5 text-base-primary" />
               <AlertDescription className="flex flex-col items-center space-y-4">
-                <p className="text-center">Connect your wallet to deploy smart contracts to the Base Sepolia.</p>
+                <p className="text-center">Connect your wallet to deploy smart contracts to the Base Mainnet.</p>
                 <Button 
                   className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                   onClick={connectWallet}

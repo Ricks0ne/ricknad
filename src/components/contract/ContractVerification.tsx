@@ -303,7 +303,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
           )}
           
           <div className="text-xs text-gray-500">
-            <p>Network: Base Sepolia (Chain ID: 10143)</p>
+            <p>Network: Base Mainnet (Chain ID: 8453)</p>
             <p className="mt-1">Contract Address: {contractAddress}</p>
           </div>
         </div>
