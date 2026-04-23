@@ -1,13 +1,13 @@
 
 import { NetworkInfo } from "../types/blockchain";
 
-// Base Sepolia Testnet Configuration
+// Base Mainnet Configuration
 export const BASE_TESTNET: NetworkInfo = {
-  chainId: "84532",
-  name: "Base Sepolia",
-  rpcUrl: "https://sepolia.base.org",
-  blockExplorerUrl: "https://sepolia.basescan.org",
-  faucet: "https://www.alchemy.com/faucets/base-sepolia",
+  chainId: "8453",
+  name: "Base",
+  rpcUrl: "https://mainnet.base.org",
+  blockExplorerUrl: "https://basescan.org",
+  faucet: "https://www.base.org/",
   currency: {
     name: "Ether",
     symbol: "ETH",
@@ -19,9 +19,9 @@ export const BASE_TESTNET: NetworkInfo = {
 export const BASE_RESOURCES = {
   documentation: "https://docs.base.org/",
   github: "https://github.com/base-org",
-  explorer: "https://sepolia.basescan.org/",
+  explorer: "https://basescan.org/",
   blog: "https://base.mirror.xyz/",
-  faucet: "https://www.alchemy.com/faucets/base-sepolia"
+  faucet: "https://www.base.org/"
 };
 
 // Default Solidity Example for Contract Generator
