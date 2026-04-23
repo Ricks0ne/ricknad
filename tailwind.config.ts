@@ -26,11 +26,11 @@ export default {
 			},
 			colors: {
 				base: {
-					primary: '#7DF9FF', // Electric blue
-					secondary: '#00FF9C', // Bright green
-					dark: '#0A0A0A', // Dark charcoal
-					light: '#FFFFFF', // White
-					grey: '#9CA3AF', // Subtle grey
+					primary: '#0000FF',   // Base Blue
+					secondary: '#0A0B0D', // Midnight black
+					dark: '#0A0B0D',
+					light: '#FFFFFF',
+					grey: '#6B7280',
 				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
