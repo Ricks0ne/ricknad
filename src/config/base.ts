@@ -1,16 +1,16 @@
 
 import { NetworkInfo } from "../types/blockchain";
 
-// Base Sepolia Configuration
+// Base Sepolia Testnet Configuration
 export const BASE_TESTNET: NetworkInfo = {
-  chainId: "1284",
+  chainId: "84532",
   name: "Base Sepolia",
-  rpcUrl: "https://testnet-rpc.base.org",
-  blockExplorerUrl: "https://testnet.basescan.org",
-  faucet: "https://testnet.base.org/",
+  rpcUrl: "https://sepolia.base.org",
+  blockExplorerUrl: "https://sepolia.basescan.org",
+  faucet: "https://www.alchemy.com/faucets/base-sepolia",
   currency: {
-    name: "Base",
-    symbol: "BASE",
+    name: "Ether",
+    symbol: "ETH",
     decimals: 18,
   },
 };
@@ -18,15 +18,15 @@ export const BASE_TESTNET: NetworkInfo = {
 // Resource Links
 export const BASE_RESOURCES = {
   documentation: "https://docs.base.org/",
-  github: "https://github.com/monad-developers",
-  explorer: "https://testnet.basescan.org/",
-  blog: "https://www.base.org/blog",
-  faucet: "https://testnet.base.org/"
+  github: "https://github.com/base-org",
+  explorer: "https://sepolia.basescan.org/",
+  blog: "https://base.mirror.xyz/",
+  faucet: "https://www.alchemy.com/faucets/base-sepolia"
 };
 
 // Default Solidity Example for Contract Generator
 export const DEFAULT_CONTRACT_TEMPLATE = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.20;
 
 contract SimpleStorage {
     uint256 private value;
