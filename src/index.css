@@ -7,86 +7,86 @@
 
 @layer base {
   :root {
-    /* Dark theme inspired by Base Sepolia */
-    --background: 0 0% 4%;  /* Dark charcoal (#0A0A0A) */
-    --foreground: 0 0% 100%;  /* White (#FFFFFF) */
+    /* Base.org light theme: pure white + midnight black + Base Blue */
+    --background: 0 0% 100%;            /* #FFFFFF */
+    --foreground: 220 11% 5%;           /* #0A0B0D */
 
-    --card: 0 0% 6%;  /* Slightly lighter than background */
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 11% 5%;
 
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 11% 5%;
 
-    /* Updated colors based on Base Sepolia theme */
-    --primary: 180 100% 74%;  /* Electric blue (#7DF9FF) */
-    --primary-foreground: 0 0% 4%;  /* Dark charcoal for text on primary */
+    /* Base Blue #0000FF */
+    --primary: 240 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 156 100% 50%;  /* Bright green (#00FF9C) */
-    --secondary-foreground: 0 0% 4%;  /* Dark charcoal for text on secondary */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 220 11% 5%;
 
-    --muted: 0 0% 20%;  /* Dark grey */
-    --muted-foreground: 0 0% 70%;  /* Light grey */
+    --muted: 0 0% 96%;
+    --muted-foreground: 220 9% 40%;
 
-    --accent: 180 100% 74%;  /* Same as primary */
-    --accent-foreground: 0 0% 4%;
+    --accent: 240 100% 50%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 180 100% 74%;  /* Electric blue for focus rings */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 240 100% 50%;
 
-    --radius: 0.5rem;  /* Subtle border radius */
+    --radius: 0.25rem; /* flat, technical */
 
-    /* Sidebar colors - dark with electric blue accents */
-    --sidebar-background: 0 0% 0%;  /* Black (#000000) */
-    --sidebar-foreground: 0 0% 100%;  /* White (#FFFFFF) */
-    --sidebar-primary: 180 100% 74%;  /* Electric blue (#7DF9FF) */
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 156 100% 50%;  /* Bright green */
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 180 100% 74%;
+    /* Sidebar — midnight black */
+    --sidebar-background: 220 11% 5%;   /* #0A0B0D */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 240 100% 50%;    /* Base Blue */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 100% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 11% 12%;
+    --sidebar-ring: 240 100% 50%;
   }
 
   .dark {
-    --background: 0 0% 4%;
+    --background: 220 11% 5%;
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 6%;
+    --card: 220 11% 7%;
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 4%;
+    --popover: 220 11% 5%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 180 100% 74%;
-    --primary-foreground: 0 0% 4%;
+    --primary: 240 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 156 100% 50%;
-    --secondary-foreground: 0 0% 4%;
+    --secondary: 220 11% 10%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 20%;
+    --muted: 220 11% 12%;
     --muted-foreground: 0 0% 70%;
 
-    --accent: 180 100% 74%;
-    --accent-foreground: 0 0% 4%;
+    --accent: 240 100% 50%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 180 100% 74%;
-    
-    --sidebar-background: 0 0% 0%;
+    --border: 220 11% 15%;
+    --input: 220 11% 15%;
+    --ring: 240 100% 50%;
+
+    --sidebar-background: 220 11% 5%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 180 100% 74%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 156 100% 50%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 180 100% 74%;
+    --sidebar-primary: 240 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 100% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 11% 12%;
+    --sidebar-ring: 240 100% 50%;
   }
 }
 
@@ -140,11 +140,11 @@
   }
   
   .base-glow {
-    box-shadow: 0 0 15px 2px rgba(125, 249, 255, 0.25);
+    box-shadow: none;
   }
   
   .base-border {
-    @apply border border-base-primary/50;
+    @apply border border-base-primary;
   }
 }
 
@@ -163,7 +163,7 @@
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -184,37 +184,36 @@
 
 /* Button animations */
 button {
-  @apply transition-all duration-200;
+  @apply transition-all duration-200 ease-in-out;
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* Card styles */
+/* Card styles — flat, technical */
 .card {
-  @apply rounded-xl border border-white/10 bg-card shadow-sm;
+  @apply rounded-md border border-border bg-card;
 }
 
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:shadow-base-primary/20;
+  @apply transition-colors duration-200 hover:border-base-primary;
 }
 
-/* Neon accent effects */
+/* Flat accent (no neon/glow) */
 .neon-border {
-  @apply border border-base-primary shadow-lg shadow-base-primary/30;
+  @apply border border-base-primary;
 }
 
 .neon-text {
   @apply text-base-primary;
-  text-shadow: 0 0 5px rgba(125, 249, 255, 0.5);
 }
 
-/* Chat bubble styles */
+/* Chat bubble styles — flat */
 .chat-bubble-ai {
-  @apply bg-base-dark text-white border border-base-primary/20 rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-card text-foreground border border-border rounded-md p-4 animate-fade-in;
 }
 
 .chat-bubble-user {
-  @apply bg-black/50 border border-white/10 rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-secondary text-foreground border border-border rounded-md p-4 animate-fade-in;
 }
