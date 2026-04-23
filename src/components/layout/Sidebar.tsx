@@ -118,25 +118,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       </nav>
 
       <div className="mt-auto px-4 pt-4 border-t border-white/10">
-        <div className="text-sm text-base-primary mb-1">Base Sepolia</div>
-        <div className="text-xs text-gray-500 mb-2">
+        <div className="text-sm text-base-primary mb-1">Base Mainnet</div>
+        <div className="text-xs text-gray-500 mb-4">
           Chain ID: {BASE_TESTNET.chainId}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full text-xs border-base-primary/30 text-base-primary mb-4 rounded-xl hover:bg-base-primary/10"
-          asChild
-        >
-          <a href="https://faucet.base.org/" target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3 w-3 mr-2" />
-            Get Testnet Tokens
-          </a>
-        </Button>
-        
-        <a 
-          href="https://x.com/0xFred_" 
-          target="_blank" 
+
+        <a
+          href="https://x.com/0xFred_"
+          target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center text-xs text-gray-400 hover:text-base-primary transition-colors"
         >

@@ -519,7 +519,7 @@ const ChatInterface: React.FC = () => {
       if (account) {
         const hasEnough = await hasEnoughBalance(account);
         if (!hasEnough) {
-          throw new Error("Insufficient balance for deployment. Please get tokens from the faucet.");
+          throw new Error("Insufficient ETH balance on Base Mainnet to cover deployment gas. Please bridge ETH to Base via https://bridge.base.org/.");
         }
       }
       

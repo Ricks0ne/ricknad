@@ -2,13 +2,13 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BASE_RESOURCES } from "@/config/base";
-import { ArrowRight, Database, FileCode, Link as LinkIcon, Search, Wallet } from "lucide-react";
+import { ArrowRight, Database, FileCode, Link as LinkIcon, Search, ArrowLeftRight } from "lucide-react";
 
 const Resources: React.FC = () => {
   const resources = [
     {
       title: "Base Documentation",
-      description: "Official documentation and guides for developers",
+      description: "Official documentation and guides for developers (docs.base.org)",
       link: BASE_RESOURCES.documentation,
       icon: <FileCode className="h-5 w-5" />,
     },
@@ -19,8 +19,8 @@ const Resources: React.FC = () => {
       icon: <Database className="h-5 w-5" />,
     },
     {
-      title: "Base Explorer",
-      description: "Explore blocks, transactions, and contracts on the Base Sepolia",
+      title: "Base Explorer (Basescan)",
+      description: "Explore blocks, transactions, and contracts on Base Mainnet",
       link: BASE_RESOURCES.explorer,
       icon: <Search className="h-5 w-5" />,
     },
@@ -31,10 +31,10 @@ const Resources: React.FC = () => {
       icon: <LinkIcon className="h-5 w-5" />,
     },
     {
-      title: "Base Faucet",
-      description: "Get testnet tokens for development and testing",
-      link: BASE_RESOURCES.faucet,
-      icon: <Wallet className="h-5 w-5" />,
+      title: "Base Bridge",
+      description: "Bridge ETH and tokens between Ethereum Mainnet and Base",
+      link: BASE_RESOURCES.bridge,
+      icon: <ArrowLeftRight className="h-5 w-5" />,
     },
   ];
 
