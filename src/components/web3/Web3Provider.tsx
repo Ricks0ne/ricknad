@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { BASE_TESTNET } from '../../config/monad';
+import { BASE_TESTNET } from '../../config/base';
 import { toast } from 'sonner';
 import { addBaseNetwork } from '@/utils/blockchain';
 

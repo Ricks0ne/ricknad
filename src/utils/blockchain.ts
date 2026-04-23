@@ -1,6 +1,6 @@
 
 import { ethers } from "ethers";
-import { BASE_TESTNET } from "../config/monad";
+import { BASE_TESTNET } from "../config/base";
 import { Transaction } from "../types/blockchain";
 
 // Initialize a provider for the Base testnet
