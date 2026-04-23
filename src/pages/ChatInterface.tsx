@@ -328,7 +328,7 @@ const ChatInterface: React.FC = () => {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Sepolia.`,
+      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Mainnet.`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -469,7 +469,7 @@ const ChatInterface: React.FC = () => {
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "Contract compiled successfully! You can now deploy it to the Base Sepolia.",
+        content: "Contract compiled successfully! You can now deploy it to the Base Mainnet.",
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -560,7 +560,7 @@ const ChatInterface: React.FC = () => {
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Contract deployed successfully to the Base Sepolia at address ${result.address}`,
+        content: `Contract deployed successfully to the Base Mainnet at address ${result.address}`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -617,7 +617,7 @@ const ChatInterface: React.FC = () => {
     if (!isConnected) return "Connect your wallet first";
     if (!currentContract?.abi) return "Compile the contract first";
     if (isDeploying) return "Deployment in progress...";
-    return "Deploy contract to Base Sepolia";
+    return "Deploy contract to Base Mainnet";
   };
 
   return (
@@ -635,7 +635,7 @@ const ChatInterface: React.FC = () => {
             <Alert className="bg-gradient-to-r from-base-primary/10 to-base-primary/5 border-base-primary/20">
               <FileCode className="h-5 w-5 text-base-primary" />
               <AlertDescription className="flex flex-col items-center space-y-4">
-                <p className="text-center">Connect your wallet to deploy smart contracts to the Base Sepolia.</p>
+                <p className="text-center">Connect your wallet to deploy smart contracts to the Base Mainnet.</p>
                 <Button 
                   className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                   onClick={connectWallet}

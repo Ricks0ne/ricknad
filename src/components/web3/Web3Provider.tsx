@@ -48,7 +48,7 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
   useEffect(() => {
     const initProvider = async () => {
       try {
-        // Create a provider for Base Sepolia
+        // Create a provider for Base Mainnet
         const provider = new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
         setProvider(provider);
       } catch (error) {
@@ -114,11 +114,11 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       setChainId(chainId);
       
-      // Check if we need to switch to Base Sepolia
+      // Check if we need to switch to Base Mainnet
       const targetChainId = `0x${parseInt(BASE_TESTNET.chainId).toString(16)}`;
       if (chainId !== targetChainId) {
         try {
-          // Try to switch to Base Sepolia
+          // Try to switch to Base Mainnet
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: targetChainId }],
@@ -131,7 +131,7 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
           if (switchError.code === 4902) {
             try {
               await addBaseNetwork();
-              toast.success("Base Sepolia added to your wallet");
+              toast.success("Base Mainnet added to your wallet");
             } catch (addError) {
               console.error("Failed to add Base network:", addError);
               toast.error("Failed to add Base network to your wallet");
@@ -169,7 +169,7 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
     setIsConnected(false);
     toast.info("Wallet disconnected");
     
-    // Reinitialize the read-only provider for Base Sepolia
+    // Reinitialize the read-only provider for Base Mainnet
     try {
       const provider = new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
       setProvider(provider);
@@ -197,10 +197,10 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
         setChainId(chainId);
         toast.info("Network changed");
         
-        // Check if the new chain is Base Sepolia
+        // Check if the new chain is Base Mainnet
         const targetChainId = `0x${parseInt(BASE_TESTNET.chainId).toString(16)}`;
         if (chainId !== targetChainId && isConnected) {
-          toast.warning("Please switch to Base Sepolia for full functionality");
+          toast.warning("Please switch to Base Mainnet for full functionality");
         }
       };
 
