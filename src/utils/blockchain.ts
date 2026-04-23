@@ -1,12 +1,12 @@
 
 import { ethers } from "ethers";
-import { MONAD_TESTNET } from "../config/monad";
+import { BASE_TESTNET } from "../config/monad";
 import { Transaction } from "../types/blockchain";
 
-// Initialize a provider for the Monad testnet
+// Initialize a provider for the Base testnet
 export const getProvider = () => {
   try {
-    return new ethers.JsonRpcProvider(MONAD_TESTNET.rpcUrl);
+    return new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
   } catch (error) {
     console.error("Failed to initialize provider:", error);
     throw error;
@@ -97,8 +97,8 @@ export const getWalletTransactions = async (address: string, limit = 5): Promise
   }
 };
 
-// Add Monad network to wallet
-export const addMonadNetwork = async () => {
+// Add Base network to wallet
+export const addBaseNetwork = async () => {
   if (!window.ethereum) {
     throw new Error("No Ethereum provider found. Please install MetaMask.");
   }
@@ -108,21 +108,21 @@ export const addMonadNetwork = async () => {
       method: "wallet_addEthereumChain",
       params: [
         {
-          chainId: `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`,
-          chainName: MONAD_TESTNET.name,
+          chainId: `0x${parseInt(BASE_TESTNET.chainId).toString(16)}`,
+          chainName: BASE_TESTNET.name,
           nativeCurrency: {
-            name: MONAD_TESTNET.currency.name,
-            symbol: MONAD_TESTNET.currency.symbol,
-            decimals: MONAD_TESTNET.currency.decimals,
+            name: BASE_TESTNET.currency.name,
+            symbol: BASE_TESTNET.currency.symbol,
+            decimals: BASE_TESTNET.currency.decimals,
           },
-          rpcUrls: [MONAD_TESTNET.rpcUrl],
-          blockExplorerUrls: [MONAD_TESTNET.blockExplorerUrl],
+          rpcUrls: [BASE_TESTNET.rpcUrl],
+          blockExplorerUrls: [BASE_TESTNET.blockExplorerUrl],
         },
       ],
     });
     return true;
   } catch (error) {
-    console.error("Failed to add Monad network:", error);
+    console.error("Failed to add Base network:", error);
     return false;
   }
 };

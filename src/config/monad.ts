@@ -1,27 +1,27 @@
 
 import { NetworkInfo } from "../types/blockchain";
 
-// Monad Testnet Configuration
-export const MONAD_TESTNET: NetworkInfo = {
+// Base Sepolia Configuration
+export const BASE_TESTNET: NetworkInfo = {
   chainId: "1284",
-  name: "Monad Testnet",
-  rpcUrl: "https://testnet-rpc.monad.xyz",
-  blockExplorerUrl: "https://testnet.monadexplorer.com",
-  faucet: "https://testnet.monad.xyz/",
+  name: "Base Sepolia",
+  rpcUrl: "https://testnet-rpc.base.org",
+  blockExplorerUrl: "https://testnet.basescan.org",
+  faucet: "https://testnet.base.org/",
   currency: {
-    name: "Monad",
-    symbol: "MONAD",
+    name: "Base",
+    symbol: "BASE",
     decimals: 18,
   },
 };
 
 // Resource Links
-export const MONAD_RESOURCES = {
-  documentation: "https://docs.monad.xyz/",
+export const BASE_RESOURCES = {
+  documentation: "https://docs.base.org/",
   github: "https://github.com/monad-developers",
-  explorer: "https://testnet.monadexplorer.com/",
-  blog: "https://www.monad.xyz/blog",
-  faucet: "https://testnet.monad.xyz/"
+  explorer: "https://testnet.basescan.org/",
+  blog: "https://www.base.org/blog",
+  faucet: "https://testnet.base.org/"
 };
 
 // Default Solidity Example for Contract Generator

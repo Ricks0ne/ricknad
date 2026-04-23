@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Copy, ExternalLink, FileText, Search, Trash2, SquareCheck, Loader, ShieldCheck } from 'lucide-react';
 import { DeployedContract } from '@/types/blockchain';
 import { formatAddress } from '@/utils/blockchain';
-import { MONAD_TESTNET } from '@/config/monad';
+import { BASE_TESTNET } from '@/config/base';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getVerificationStatus } from '@/utils/verification';
@@ -62,7 +62,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
 
   // Open in explorer
   const openInExplorer = (address: string) => {
-    window.open(`${MONAD_TESTNET.blockExplorerUrl}/address/${address}`, '_blank');
+    window.open(`${BASE_TESTNET.blockExplorerUrl}/address/${address}`, '_blank');
   };
 
   // Delete contract
@@ -138,11 +138,11 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
   };
 
   return (
-    <Card className="mt-8 shadow-lg border-monad-accent/20 overflow-hidden animate-fade-in">
-      <CardHeader className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5">
-        <CardTitle className="text-lg md:text-2xl text-monad-primary flex items-center">
-          <div className="p-2 rounded-full bg-monad-accent/10 mr-2">
-            <FileText size={18} className="text-monad-primary" />
+    <Card className="mt-8 shadow-lg border-base-accent/20 overflow-hidden animate-fade-in">
+      <CardHeader className="bg-gradient-to-r from-base-primary/10 to-base-primary/5">
+        <CardTitle className="text-lg md:text-2xl text-base-primary flex items-center">
+          <div className="p-2 rounded-full bg-base-accent/10 mr-2">
+            <FileText size={18} className="text-base-primary" />
           </div>
           My Deployed Contracts
         </CardTitle>
@@ -208,7 +208,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
               return (
                 <div 
                   key={contract.address} 
-                  className="border rounded-lg overflow-hidden hover:border-monad-accent/50 transition-colors group"
+                  className="border rounded-lg overflow-hidden hover:border-base-accent/50 transition-colors group"
                 >
                   <div className="p-4 flex flex-col md:flex-row md:items-center justify-between bg-white">
                     <div className="flex-1">
@@ -273,7 +273,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs bg-monad-primary text-white hover:bg-monad-accent hover:text-black"
+                        className="text-xs bg-base-primary text-white hover:bg-base-accent hover:text-black"
                         onClick={() => {
                           setSelectedContract(contract);
                           setIsDialogOpen(true);

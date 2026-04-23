@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    /* Dark theme inspired by Monad Testnet */
+    /* Dark theme inspired by Base Sepolia */
     --background: 0 0% 4%;  /* Dark charcoal (#0A0A0A) */
     --foreground: 0 0% 100%;  /* White (#FFFFFF) */
 
@@ -17,7 +17,7 @@
     --popover: 0 0% 4%;
     --popover-foreground: 0 0% 100%;
 
-    /* Updated colors based on Monad Testnet theme */
+    /* Updated colors based on Base Sepolia theme */
     --primary: 180 100% 74%;  /* Electric blue (#7DF9FF) */
     --primary-foreground: 0 0% 4%;  /* Dark charcoal for text on primary */
 
@@ -131,7 +131,7 @@
     @apply transition-all duration-300;
   }
   .hover-glow:hover {
-    @apply shadow-lg shadow-monad-primary/20;
+    @apply shadow-lg shadow-base-primary/20;
   }
 
   /* Glassmorphism effects */
@@ -139,12 +139,12 @@
     @apply bg-black/40 backdrop-blur-md border border-white/10;
   }
   
-  .monad-glow {
+  .base-glow {
     box-shadow: 0 0 15px 2px rgba(125, 249, 255, 0.25);
   }
   
-  .monad-border {
-    @apply border border-monad-primary/50;
+  .base-border {
+    @apply border border-base-primary/50;
   }
 }
 
@@ -197,22 +197,22 @@ button:active:not(:disabled) {
 }
 
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:shadow-monad-primary/20;
+  @apply transition-all duration-300 hover:shadow-lg hover:shadow-base-primary/20;
 }
 
 /* Neon accent effects */
 .neon-border {
-  @apply border border-monad-primary shadow-lg shadow-monad-primary/30;
+  @apply border border-base-primary shadow-lg shadow-base-primary/30;
 }
 
 .neon-text {
-  @apply text-monad-primary;
+  @apply text-base-primary;
   text-shadow: 0 0 5px rgba(125, 249, 255, 0.5);
 }
 
 /* Chat bubble styles */
 .chat-bubble-ai {
-  @apply bg-monad-dark text-white border border-monad-primary/20 rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-base-dark text-white border border-base-primary/20 rounded-2xl p-4 animate-fade-in shadow-sm;
 }
 
 .chat-bubble-user {

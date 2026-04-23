@@ -13,9 +13,9 @@ const alertVariants = cva(
         destructive:
           "border-destructive/20 text-destructive bg-destructive/10 [&>svg]:text-destructive",
         success: 
-          "border-monad-secondary/20 text-monad-secondary bg-monad-secondary/10 [&>svg]:text-monad-secondary",
+          "border-base-secondary/20 text-base-secondary bg-base-secondary/10 [&>svg]:text-base-secondary",
         info:
-          "border-monad-primary/20 text-monad-primary bg-monad-primary/10 [&>svg]:text-monad-primary",
+          "border-base-primary/20 text-base-primary bg-base-primary/10 [&>svg]:text-base-primary",
       },
     },
     defaultVariants: {

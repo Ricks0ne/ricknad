@@ -14,7 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex min-h-screen bg-monad-dark relative">
+    <div className="flex min-h-screen bg-base-dark relative">
       {/* Main content */}
       <main className={`flex-1 ${!isMobile ? 'pr-64' : 'w-full'} px-4 py-6 animate-fade-in`}>
         <div className="container mx-auto">

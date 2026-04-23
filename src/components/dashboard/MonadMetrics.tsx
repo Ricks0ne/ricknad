@@ -5,7 +5,7 @@ import { Blocks, TrendingUp, Activity, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getProvider } from "@/utils/blockchain";
 
-const MonadMetrics = () => {
+const BaseMetrics = () => {
   const provider = getProvider();
   
   // Fetch current block number
@@ -95,9 +95,9 @@ const MonadMetrics = () => {
           {metrics.map((metric) => (
             <div
               key={metric.title}
-              className="bg-black/40 rounded-lg text-white flex flex-col items-center justify-center text-center p-4 border border-white/10 hover:border-monad-primary/30 transition-all duration-300"
+              className="bg-black/40 rounded-lg text-white flex flex-col items-center justify-center text-center p-4 border border-white/10 hover:border-base-primary/30 transition-all duration-300"
             >
-              <metric.icon className="h-6 w-6 mb-2 text-monad-primary" />
+              <metric.icon className="h-6 w-6 mb-2 text-base-primary" />
               <h3 className="text-sm font-medium text-gray-400">{metric.title}</h3>
               <p className="text-lg font-bold mt-1">{metric.value}</p>
             </div>
@@ -108,4 +108,4 @@ const MonadMetrics = () => {
   );
 };
 
-export default MonadMetrics;
+export default BaseMetrics;
