@@ -89,7 +89,7 @@ const HomePage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{walletBalance} BASE</div>
+              <div className="text-2xl font-bold">{walletBalance} ETH</div>
             </CardContent>
           </Card>
 
@@ -132,7 +132,7 @@ const HomePage: React.FC = () => {
                         </TableCell>
                         <TableCell>{formatAddress(tx.from)}</TableCell>
                         <TableCell>{formatAddress(tx.to)}</TableCell>
-                        <TableCell>{tx.value} BASE</TableCell>
+                        <TableCell>{tx.value} ETH</TableCell>
                         <TableCell>{formatDate(tx.timestamp)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded text-xs ${
