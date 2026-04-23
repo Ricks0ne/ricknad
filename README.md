@@ -1,7 +1,7 @@
 
-# Ricknad
+# BasedRicks
 
-Ricknad is a decentralized application that connects to the Monad Testnet.  
+BasedRicks is a decentralized application that connects to the Base Sepolia.  
 It offers smart contract generation, real-time metrics, and interactive blockchain insights.
 
 ## Features
@@ -9,7 +9,7 @@ It offers smart contract generation, real-time metrics, and interactive blockcha
 ### Smart Contract Generation
 - AI-powered contract generation based on natural language requests
 - Support for multiple contract types (ERC20, ERC721, ERC1155, Staking, Governance, etc.)
-- Automatic compilation and deployment to Monad Testnet
+- Automatic compilation and deployment to Base Sepolia
 - Customizable contract features (pausable, ownable, roles, etc.)
 
 ### Contract Interaction
@@ -24,14 +24,14 @@ It offers smart contract generation, real-time metrics, and interactive blockcha
 - Import/export your contract list
 - One-click interaction with deployed contracts
 
-### Monad Integration
-- Full Monad Testnet compatibility
+### Base Integration
+- Full Base Sepolia compatibility
 - Connect with MetaMask or other wallets
 - View transaction history and contract interactions
-- Access to Monad blockchain explorers
+- Access to Base blockchain explorers
 
 ## Technical Details
-- Deployed to Monad Testnet at https://testnet-rpc.monad.xyz
+- Deployed to Base Sepolia at https://testnet-rpc.base.org
 - Chain ID: 10143
 - Built with React, TypeScript, Ethers.js, and Tailwind CSS
 - Responsive UI with smooth animations

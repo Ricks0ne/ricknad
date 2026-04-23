@@ -1,39 +1,39 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MONAD_RESOURCES } from "@/config/monad";
+import { BASE_RESOURCES } from "@/config/base";
 import { ArrowRight, Database, FileCode, Link as LinkIcon, Search, Wallet } from "lucide-react";
 
 const Resources: React.FC = () => {
   const resources = [
     {
-      title: "Monad Documentation",
+      title: "Base Documentation",
       description: "Official documentation and guides for developers",
-      link: MONAD_RESOURCES.documentation,
+      link: BASE_RESOURCES.documentation,
       icon: <FileCode className="h-5 w-5" />,
     },
     {
-      title: "Monad GitHub",
+      title: "Base GitHub",
       description: "Open source repositories and developer resources",
-      link: MONAD_RESOURCES.github,
+      link: BASE_RESOURCES.github,
       icon: <Database className="h-5 w-5" />,
     },
     {
-      title: "Monad Explorer",
-      description: "Explore blocks, transactions, and contracts on the Monad Testnet",
-      link: MONAD_RESOURCES.explorer,
+      title: "Base Explorer",
+      description: "Explore blocks, transactions, and contracts on the Base Sepolia",
+      link: BASE_RESOURCES.explorer,
       icon: <Search className="h-5 w-5" />,
     },
     {
-      title: "Monad Blog",
-      description: "Latest news, updates and technical insights about Monad",
-      link: MONAD_RESOURCES.blog,
+      title: "Base Blog",
+      description: "Latest news, updates and technical insights about Base",
+      link: BASE_RESOURCES.blog,
       icon: <LinkIcon className="h-5 w-5" />,
     },
     {
-      title: "Monad Faucet",
+      title: "Base Faucet",
       description: "Get testnet tokens for development and testing",
-      link: MONAD_RESOURCES.faucet,
+      link: BASE_RESOURCES.faucet,
       icon: <Wallet className="h-5 w-5" />,
     },
   ];
@@ -41,9 +41,9 @@ const Resources: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-monad-primary mb-2">Monad Resources</h1>
+        <h1 className="text-3xl font-bold text-base-primary mb-2">Base Resources</h1>
         <p className="text-gray-600">
-          Essential links and resources for the Monad ecosystem
+          Essential links and resources for the Base ecosystem
         </p>
       </div>
 
@@ -53,7 +53,7 @@ const Resources: React.FC = () => {
             <CardHeader className="border-b pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="bg-monad-primary p-2 rounded-md text-white">
+                  <div className="bg-base-primary p-2 rounded-md text-white">
                     {resource.icon}
                   </div>
                   <CardTitle>{resource.title}</CardTitle>
@@ -62,7 +62,7 @@ const Resources: React.FC = () => {
                   href={resource.link} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-monad-primary hover:text-monad-accent flex items-center"
+                  className="text-base-primary hover:text-base-accent flex items-center"
                 >
                   <span className="mr-1">Visit</span>
                   <ArrowRight className="h-4 w-4" />
@@ -89,29 +89,29 @@ const Resources: React.FC = () => {
       </div>
 
       <div className="mt-12 text-center border-t pt-8">
-        <h3 className="text-lg font-semibold mb-4">Join the Monad Community</h3>
+        <h3 className="text-lg font-semibold mb-4">Join the Base Community</h3>
         <div className="flex justify-center space-x-4">
           <a 
-            href="https://twitter.com/monad_xyz" 
+            href="https://twitter.com/base" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-monad-primary hover:text-monad-accent"
+            className="text-base-primary hover:text-base-accent"
           >
             Twitter
           </a>
           <a 
-            href="https://discord.gg/monad" 
+            href="https://discord.gg/buildonbase" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-monad-primary hover:text-monad-accent"
+            className="text-base-primary hover:text-base-accent"
           >
             Discord
           </a>
           <a 
-            href="https://t.me/monad_xyz" 
+            href="https://twitter.com/base" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-monad-primary hover:text-monad-accent"
+            className="text-base-primary hover:text-base-accent"
           >
             Telegram
           </a>

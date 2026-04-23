@@ -55,7 +55,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
   useEffect(() => {
     try {
       if (contract && contract.abi) {
-        const provider = signer?.provider || new ethers.JsonRpcProvider((window as any).MONAD_RPC_URL);
+        const provider = signer?.provider || new ethers.JsonRpcProvider((window as any).BASE_RPC_URL);
         const contractInst = new ethers.Contract(
           contract.address,
           contract.abi,
@@ -373,11 +373,11 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
   }
 
   return (
-    <Card className="w-full bg-white shadow-lg border-monad-accent/20 overflow-hidden animate-fade-in">
-      <CardHeader className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5">
-        <CardTitle className="text-lg md:text-2xl text-monad-primary flex items-center">
-          <div className="p-2 rounded-full bg-monad-accent/10 mr-2">
-            <Play size={18} className="text-monad-primary" />
+    <Card className="w-full bg-white shadow-lg border-base-accent/20 overflow-hidden animate-fade-in">
+      <CardHeader className="bg-gradient-to-r from-base-primary/10 to-base-primary/5">
+        <CardTitle className="text-lg md:text-2xl text-base-primary flex items-center">
+          <div className="p-2 rounded-full bg-base-accent/10 mr-2">
+            <Play size={18} className="text-base-primary" />
           </div>
           Contract Interaction
         </CardTitle>
@@ -404,7 +404,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
                   <AccordionItem value={fn.name} key={fn.name} className="border rounded-md mb-2 overflow-hidden">
                     <AccordionTrigger className="px-4 py-2 hover:bg-gray-50">
                       <div className="flex items-center">
-                        <span className="font-mono text-sm text-monad-primary">{fn.name}</span>
+                        <span className="font-mono text-sm text-base-primary">{fn.name}</span>
                         {fn.inputs.length > 0 && (
                           <span className="ml-2 text-xs text-gray-500">
                             ({fn.inputs.map(i => `${i.type}`).join(', ')})
@@ -436,7 +436,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
                           <Button 
                             onClick={() => callReadFunction(fn)}
                             disabled={isLoading[fn.name]}
-                            className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                            className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                           >
                             {isLoading[fn.name] ? (
                               <>
@@ -482,7 +482,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
                   <AccordionItem value={fn.name} key={fn.name} className="border rounded-md mb-2 overflow-hidden">
                     <AccordionTrigger className="px-4 py-2 hover:bg-gray-50">
                       <div className="flex items-center">
-                        <span className="font-mono text-sm text-monad-primary">{fn.name}</span>
+                        <span className="font-mono text-sm text-base-primary">{fn.name}</span>
                         {fn.stateMutability === 'payable' && (
                           <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1 rounded">payable</span>
                         )}
@@ -518,7 +518,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
                           <Button 
                             onClick={() => callWriteFunction(fn)}
                             disabled={isLoading[fn.name] || !isConnected}
-                            className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                            className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                           >
                             {isLoading[fn.name] ? (
                               <>
@@ -557,7 +557,7 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
                     {eventLogs.map((log, idx) => (
                       <div key={idx} className="p-3 border rounded-md bg-gray-50">
                         <div className="flex justify-between items-start mb-1">
-                          <span className={`font-medium ${log.event.startsWith('ERROR') ? 'text-red-600' : 'text-monad-primary'}`}>
+                          <span className={`font-medium ${log.event.startsWith('ERROR') ? 'text-red-600' : 'text-base-primary'}`}>
                             {log.event}
                           </span>
                           <span className="text-xs text-gray-500">

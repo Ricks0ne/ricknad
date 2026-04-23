@@ -25,7 +25,7 @@ export default {
 				grotesk: ['Space Grotesk', 'system-ui', 'sans-serif'],
 			},
 			colors: {
-				monad: {
+				base: {
 					primary: '#7DF9FF', // Electric blue
 					secondary: '#00FF9C', // Bright green
 					dark: '#0A0A0A', // Dark charcoal

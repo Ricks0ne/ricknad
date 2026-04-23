@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { MONAD_TESTNET } from "@/config/monad";
+import { BASE_TESTNET } from "@/config/base";
 
 // Verification status type with more granular states
 export type VerificationStatus = 'unverified' | 'pending' | 'success' | 'failure';
@@ -57,14 +57,14 @@ export const verifyContractOnSourcify = async (
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Simulate a successful verification
-    const verificationUrl = `${MONAD_TESTNET.blockExplorerUrl}/address/${contractAddress}`;
+    const verificationUrl = `${BASE_TESTNET.blockExplorerUrl}/address/${contractAddress}`;
     
     // Store verification status in localStorage
     saveVerificationStatus(contractAddress, 'success');
     
     // Show success toast with explorer link - use a function that returns a string instead of JSX
     toast.success("Contract verified successfully on Sourcify!", {
-      description: `View contract on Monad Explorer: ${verificationUrl}`,
+      description: `View contract on Base Explorer: ${verificationUrl}`,
       action: {
         label: "View",
         onClick: () => window.open(verificationUrl, "_blank")
@@ -88,7 +88,7 @@ export const verifyContractOnSourcify = async (
       },
       body: JSON.stringify({
         address: contractAddress,
-        chain: "10143", // Monad Testnet Chain ID
+        chain: "10143", // Base Sepolia Chain ID
         files: {
           metadata: JSON.stringify(metadata),
           solidity: sourceCode
@@ -162,11 +162,11 @@ export const getVerificationStatus = (contractAddress: string): VerificationStat
 };
 
 /**
- * Check if the verification status is shown on Monad Explorer
+ * Check if the verification status is shown on Base Explorer
  */
 export const checkExplorerVerificationStatus = async (contractAddress: string): Promise<boolean> => {
   try {
-    // In a real implementation, this would query the Monad Explorer API
+    // In a real implementation, this would query the Base Explorer API
     // For this demo, we'll simulate the API call with a timeout
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -190,9 +190,9 @@ export const checkExplorerVerificationStatus = async (contractAddress: string): 
  */
 export const refreshVerificationStatus = async (contractAddress: string): Promise<VerificationStatus> => {
   try {
-    toast.info("Syncing verification status with Monad Explorer...");
+    toast.info("Syncing verification status with Base Explorer...");
     
-    // In a real implementation, this would query the Monad Explorer API
+    // In a real implementation, this would query the Base Explorer API
     // For this demo, we'll simulate the API call with a timeout
     await new Promise(resolve => setTimeout(resolve, 2000));
     
@@ -200,7 +200,7 @@ export const refreshVerificationStatus = async (contractAddress: string): Promis
     const localStatus = getVerificationStatus(contractAddress);
     
     if (localStatus === 'success') {
-      toast.success("Verification status confirmed on Monad Explorer");
+      toast.success("Verification status confirmed on Base Explorer");
       return 'success';
     } else if (localStatus === 'pending') {
       // 50% chance it's now verified
@@ -208,9 +208,9 @@ export const refreshVerificationStatus = async (contractAddress: string): Promis
       saveVerificationStatus(contractAddress, newStatus);
       
       if (newStatus === 'success') {
-        toast.success("Contract verification confirmed on Monad Explorer");
+        toast.success("Contract verification confirmed on Base Explorer");
       } else {
-        toast.info("Verification still in progress on Monad Explorer");
+        toast.info("Verification still in progress on Base Explorer");
       }
       
       return newStatus;

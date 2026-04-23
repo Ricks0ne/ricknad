@@ -15,7 +15,7 @@ import {
 import { useWeb3 } from '../web3/Web3Provider';
 import { Button } from '@/components/ui/button';
 import { formatAddress } from '@/utils/blockchain';
-import { MONAD_TESTNET } from '@/config/monad';
+import { BASE_TESTNET } from '@/config/base';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarProps {
@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       icon: <Database className="h-5 w-5" />,
     },
     {
-      name: 'Monad AI Chat',
+      name: 'Base AI Chat',
       path: '/chat',
       icon: <MessageSquare className="h-5 w-5" />,
     },
@@ -48,12 +48,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="bg-monad-dark text-monad-light h-screen w-64 flex flex-col py-6 shadow-lg overflow-y-auto border-l border-white/10">
+    <div className="bg-base-dark text-base-light h-screen w-64 flex flex-col py-6 shadow-lg overflow-y-auto border-l border-white/10">
       {isMobile && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-4 right-4 text-white hover:text-monad-primary"
+          className="absolute top-4 right-4 text-white hover:text-base-primary"
           onClick={onClose}
         >
           <X className="h-5 w-5" />
@@ -61,11 +61,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       )}
 
       <div className="px-4 mb-8">
-        <h2 className="text-2xl font-bold text-monad-primary font-grotesk">Ricknad</h2>
-        <p className="text-xs text-gray-400 mt-1">Generate smart contracts & ask Monad AI anything</p>
+        <h2 className="text-2xl font-bold text-base-primary font-grotesk">BasedRicks</h2>
+        <p className="text-xs text-gray-400 mt-1">Generate smart contracts & ask Base AI anything</p>
         <div className="flex items-center mt-2">
-          <FileCode className="h-4 w-4 mr-2 text-monad-primary" />
-          <p className="text-sm text-gray-400">Monad Smart Contracts</p>
+          <FileCode className="h-4 w-4 mr-2 text-base-primary" />
+          <p className="text-sm text-gray-400">Base Smart Contracts</p>
         </div>
       </div>
 
@@ -73,12 +73,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {isConnected && account ? (
           <div className="space-y-2">
             <div className="flex items-center space-x-2 bg-black/40 p-2 rounded-xl border border-white/10">
-              <WalletIcon className="h-4 w-4 text-monad-primary" />
+              <WalletIcon className="h-4 w-4 text-base-primary" />
               <span className="text-sm truncate">{formatAddress(account)}</span>
             </div>
             <Button 
               variant="outline" 
-              className="w-full border-monad-primary text-monad-primary hover:bg-monad-primary/10 hover:text-white transition-colors"
+              className="w-full border-base-primary text-base-primary hover:bg-base-primary/10 hover:text-white transition-colors"
               onClick={disconnectWallet}
             >
               Disconnect
@@ -86,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </div>
         ) : (
           <Button 
-            className="w-full bg-monad-primary text-black hover:bg-monad-primary/90 rounded-xl"
+            className="w-full bg-base-primary text-black hover:bg-base-primary/90 rounded-xl"
             onClick={connectWallet}
             disabled={isConnecting}
           >
@@ -105,8 +105,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                 className={cn(
                   "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all",
                   isActive(item.path)
-                    ? "bg-black/40 text-monad-primary border border-monad-primary/30"
-                    : "text-gray-300 hover:text-monad-primary hover:bg-black/20"
+                    ? "bg-black/40 text-base-primary border border-base-primary/30"
+                    : "text-gray-300 hover:text-base-primary hover:bg-black/20"
                 )}
               >
                 {item.icon}
@@ -118,17 +118,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       </nav>
 
       <div className="mt-auto px-4 pt-4 border-t border-white/10">
-        <div className="text-sm text-monad-primary mb-1">Monad Testnet</div>
+        <div className="text-sm text-base-primary mb-1">Base Sepolia</div>
         <div className="text-xs text-gray-500 mb-2">
-          Chain ID: {MONAD_TESTNET.chainId}
+          Chain ID: {BASE_TESTNET.chainId}
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="w-full text-xs border-monad-primary/30 text-monad-primary mb-4 rounded-xl hover:bg-monad-primary/10"
+          className="w-full text-xs border-base-primary/30 text-base-primary mb-4 rounded-xl hover:bg-base-primary/10"
           asChild
         >
-          <a href="https://faucet.monad.xyz/" target="_blank" rel="noopener noreferrer">
+          <a href="https://faucet.base.org/" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3 w-3 mr-2" />
             Get Testnet Tokens
           </a>
@@ -138,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           href="https://x.com/0xFred_" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="flex items-center justify-center text-xs text-gray-400 hover:text-monad-primary transition-colors"
+          className="flex items-center justify-center text-xs text-gray-400 hover:text-base-primary transition-colors"
         >
           <Twitter className="h-3 w-3 mr-1" />
           Follow me on X: @0xFred_

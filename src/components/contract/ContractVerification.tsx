@@ -13,7 +13,7 @@ import {
   RefreshCcw 
 } from "lucide-react";
 import { toast } from "sonner";
-import { MONAD_TESTNET } from "@/config/monad";
+import { BASE_TESTNET } from "@/config/base";
 import { 
   verifyContractOnSourcify, 
   getVerificationStatus, 
@@ -112,12 +112,12 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
     setIsCheckingExplorer(false);
   };
   
-  const explorerUrl = `${MONAD_TESTNET.blockExplorerUrl}/address/${contractAddress}`;
+  const explorerUrl = `${BASE_TESTNET.blockExplorerUrl}/address/${contractAddress}`;
   
   return (
-    <Card className="mt-4 border-monad-accent/20 overflow-hidden animate-fade-in">
-      <CardHeader className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5">
-        <CardTitle className="flex items-center text-monad-primary">
+    <Card className="mt-4 border-base-accent/20 overflow-hidden animate-fade-in">
+      <CardHeader className="bg-gradient-to-r from-base-primary/10 to-base-primary/5">
+        <CardTitle className="flex items-center text-base-primary">
           <ShieldCheck className="mr-2 h-5 w-5" />
           🔒 Verify Your Contract on Sourcify
         </CardTitle>
@@ -127,7 +127,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
       </CardHeader>
       <CardContent className="p-4">
         <div className="space-y-4">
-          <Alert className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5 border-monad-primary/20">
+          <Alert className="bg-gradient-to-r from-base-primary/10 to-base-primary/5 border-base-primary/20">
             <AlertDescription>
               <p className="mb-2">
                 Contract verification allows anyone to view and audit your smart contract's source code.
@@ -151,13 +151,13 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                 {explorerVerified === true ? (
                   <Badge variant="default" className="bg-blue-500 text-white flex items-center gap-1">
                     <CheckCircle2 size={12} />
-                    Verified on Monad Explorer
+                    Verified on Base Explorer
                   </Badge>
                 ) : explorerVerified === false ? (
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-orange-500 border-orange-200 flex items-center gap-1">
                       <AlertCircle size={12} />
-                      Pending on Monad Explorer
+                      Pending on Base Explorer
                     </Badge>
                     <Button 
                       variant="ghost" 
@@ -188,7 +188,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
               <p className="text-sm text-green-700 mb-3">
                 Your contract has been successfully verified. The source code is now publicly available on Sourcify.
                 {explorerVerified === false && 
-                  " It may take a few minutes for the verification to be reflected on Monad Explorer."}
+                  " It may take a few minutes for the verification to be reflected on Base Explorer."}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button 
@@ -198,7 +198,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                   onClick={() => window.open(explorerUrl, '_blank')}
                 >
                   <ExternalLink size={16} className="mr-2" />
-                  View on Monad Explorer
+                  View on Base Explorer
                 </Button>
                 
                 {explorerVerified === false && (
@@ -238,7 +238,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                 <Button 
                   size="sm"
                   onClick={handleVerify}
-                  className="bg-monad-accent hover:bg-monad-accent/80 text-black flex items-center"
+                  className="bg-base-accent hover:bg-base-accent/80 text-black flex items-center"
                   disabled={isVerifying}
                 >
                   {isVerifying ? (
@@ -256,7 +256,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                   onClick={() => window.open(explorerUrl, '_blank')}
                 >
                   <ExternalLink size={16} className="mr-2" />
-                  View on Monad Explorer
+                  View on Base Explorer
                 </Button>
               </div>
             </div>
@@ -269,7 +269,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
               </div>
               <div className="flex items-center justify-center p-4">
                 <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-monad-accent" />
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-base-accent" />
                   <p className="text-sm text-yellow-700">
                     Verifying your contract on Sourcify...
                   </p>
@@ -289,7 +289,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                 <Button
                   onClick={handleVerify}
                   disabled={isVerifying}
-                  className="bg-monad-accent hover:bg-monad-accent/80 text-black flex items-center"
+                  className="bg-base-accent hover:bg-base-accent/80 text-black flex items-center"
                 >
                   {isVerifying ? (
                     <Loader2 size={16} className="mr-2 animate-spin" />
@@ -303,7 +303,7 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
           )}
           
           <div className="text-xs text-gray-500">
-            <p>Network: Monad Testnet (Chain ID: 10143)</p>
+            <p>Network: Base Sepolia (Chain ID: 10143)</p>
             <p className="mt-1">Contract Address: {contractAddress}</p>
           </div>
         </div>

@@ -1158,37 +1158,37 @@ export function enhancedGenerateContract(userPrompt: string): {
     switch (contractType) {
       case 'erc20':
       case 'erc20Upgradeable':
-        params.name = 'MonadToken';
+        params.name = 'BaseToken';
         params.symbol = 'MTKN';
         break;
       case 'erc721':
-        params.name = 'MonadNFT';
+        params.name = 'BaseNFT';
         params.symbol = 'MNFT';
         break;
       case 'erc1155':
-        params.name = 'MonadMultiToken';
+        params.name = 'BaseMultiToken';
         params.symbol = 'MMT';
         break;
       case 'staking':
-        params.name = 'MonadStaking';
+        params.name = 'BaseStaking';
         break;
       case 'dao':
-        params.name = 'MonadDAO';
+        params.name = 'BaseDAO';
         break;
       case 'timelock':
-        params.name = 'MonadTimelock';
+        params.name = 'BaseTimelock';
         break;
       case 'vesting':
-        params.name = 'MonadVesting';
+        params.name = 'BaseVesting';
         break;
       case 'multisig':
-        params.name = 'MonadMultiSig';
+        params.name = 'BaseMultiSig';
         break;
       case 'upgradeable':
-        params.name = 'MonadUpgradeable';
+        params.name = 'BaseUpgradeable';
         break;
       default:
-        params.name = 'MonadContract';
+        params.name = 'BaseContract';
     }
   }
   

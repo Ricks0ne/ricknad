@@ -18,7 +18,7 @@ import {
   Send
 } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
-import { MONAD_TESTNET } from "@/config/monad";
+import { BASE_TESTNET } from "@/config/base";
 import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
 import { generateContract } from "@/utils/enhancedContractGenerator";
 import { toast } from "sonner";
@@ -71,15 +71,15 @@ const ChatInterface: React.FC = () => {
   const [conversationContext, setConversationContext] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // System prompt that defines Monad AI's behavior
+  // System prompt that defines Base AI's behavior
   const systemPrompt: Message = {
     id: 'system-prompt',
     role: 'system',
-    content: `You are Monad AI, an expert Solidity developer assistant integrated into the Ricknad platform. 
+    content: `You are Base AI, an expert Solidity developer assistant integrated into the BasedRicks platform. 
     Your primary function is to assist users in generating and refining Ethereum-compatible smart contracts 
-    for the Monad blockchain through an interactive, conversational interface.
+    for the Base blockchain through an interactive, conversational interface.
     
-    Utilize Solidity version ^0.8.20 and incorporate the latest stable OpenZeppelin libraries compatible with the Monad EVM.
+    Utilize Solidity version ^0.8.20 and incorporate the latest stable OpenZeppelin libraries compatible with the Base EVM.
     Ensure all generated code is syntactically correct, includes necessary comments, and avoids placeholders or incomplete sections.
     Support ERC20 tokens, NFTs, staking contracts, upgradeable contracts, DAOs, multi-token contracts, vesting schedules, and SBTs.`,
     timestamp: Date.now()
@@ -103,11 +103,11 @@ const ChatInterface: React.FC = () => {
     const hour = new Date().getHours();
     
     if (hour < 12) {
-      return "Good morning! 🌅 I'm Monad AI, your expert Solidity developer assistant. How can I help with your smart contract development today? Whether you need a new contract or want to modify an existing one, I'm here to assist.";
+      return "Good morning! 🌅 I'm Base AI, your expert Solidity developer assistant. How can I help with your smart contract development today? Whether you need a new contract or want to modify an existing one, I'm here to assist.";
     } else if (hour < 18) {
-      return "Good afternoon! 🌞 I'm Monad AI, your expert Solidity developer assistant. What kind of smart contract would you like to work on today? I can help with tokens, NFTs, staking, DAOs, or custom implementations.";
+      return "Good afternoon! 🌞 I'm Base AI, your expert Solidity developer assistant. What kind of smart contract would you like to work on today? I can help with tokens, NFTs, staking, DAOs, or custom implementations.";
     } else {
-      return "Good evening! 🌙 I'm Monad AI, your expert Solidity developer assistant. Looking to develop smart contracts for Monad? I can help you create or refine any Ethereum-compatible contract with the latest Solidity standards.";
+      return "Good evening! 🌙 I'm Base AI, your expert Solidity developer assistant. Looking to develop smart contracts for Base? I can help you create or refine any Ethereum-compatible contract with the latest Solidity standards.";
     }
   };
 
@@ -217,7 +217,7 @@ const ChatInterface: React.FC = () => {
     const greetingMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: "Hello! 👋 I'm Monad AI, your expert Solidity developer assistant. I can help you create or modify smart contracts for the Monad blockchain. What type of contract would you like to work on today?",
+      content: "Hello! 👋 I'm Base AI, your expert Solidity developer assistant. I can help you create or modify smart contracts for the Base blockchain. What type of contract would you like to work on today?",
       timestamp: Date.now()
     };
     
@@ -327,7 +327,7 @@ const ChatInterface: React.FC = () => {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Monad Testnet.`,
+      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Sepolia.`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -468,7 +468,7 @@ const ChatInterface: React.FC = () => {
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "Contract compiled successfully! You can now deploy it to the Monad Testnet.",
+        content: "Contract compiled successfully! You can now deploy it to the Base Sepolia.",
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -559,7 +559,7 @@ const ChatInterface: React.FC = () => {
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Contract deployed successfully to the Monad Testnet at address ${result.address}`,
+        content: `Contract deployed successfully to the Base Sepolia at address ${result.address}`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -599,7 +599,7 @@ const ChatInterface: React.FC = () => {
   };
 
   const openExplorer = (address: string) => {
-    window.open(`${MONAD_TESTNET.blockExplorerUrl}/address/${address}`, '_blank');
+    window.open(`${BASE_TESTNET.blockExplorerUrl}/address/${address}`, '_blank');
   };
 
   const formatDate = (timestamp: number) => {
@@ -616,27 +616,27 @@ const ChatInterface: React.FC = () => {
     if (!isConnected) return "Connect your wallet first";
     if (!currentContract?.abi) return "Compile the contract first";
     if (isDeploying) return "Deployment in progress...";
-    return "Deploy contract to Monad Testnet";
+    return "Deploy contract to Base Sepolia";
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-5xl font-bold text-monad-primary mb-2">Welcome to Monad AI 👨‍🔬</h1>
+        <h1 className="text-5xl font-bold text-base-primary mb-2">Welcome to Base AI 👨‍🔬</h1>
         <p className="text-lg text-gray-600 italic">
-          Expert Solidity developer assistant for the Monad blockchain
+          Expert Solidity developer assistant for the Base blockchain
         </p>
       </div>
 
       {!isConnected ? (
-        <Card className="mb-6 animate-scale-in shadow-lg border-monad-accent/20">
+        <Card className="mb-6 animate-scale-in shadow-lg border-base-accent/20">
           <CardContent className="pt-6">
-            <Alert className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5 border-monad-primary/20">
-              <FileCode className="h-5 w-5 text-monad-primary" />
+            <Alert className="bg-gradient-to-r from-base-primary/10 to-base-primary/5 border-base-primary/20">
+              <FileCode className="h-5 w-5 text-base-primary" />
               <AlertDescription className="flex flex-col items-center space-y-4">
-                <p className="text-center">Connect your wallet to deploy smart contracts to the Monad Testnet.</p>
+                <p className="text-center">Connect your wallet to deploy smart contracts to the Base Sepolia.</p>
                 <Button 
-                  className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                  className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                   onClick={connectWallet}
                 >
                   Connect Wallet
@@ -648,14 +648,14 @@ const ChatInterface: React.FC = () => {
       ) : null}
 
       <div className="flex flex-col space-y-4">
-        <Card className="flex-1 animate-fade-in shadow-lg border-monad-accent/20">
-          <CardHeader className="bg-gradient-to-r from-monad-primary/10 to-monad-primary/5">
-            <CardTitle className="flex items-center text-monad-primary">
-              <MessageSquare className="mr-2 h-5 w-5 text-monad-accent" />
-              Monad AI Chat
+        <Card className="flex-1 animate-fade-in shadow-lg border-base-accent/20">
+          <CardHeader className="bg-gradient-to-r from-base-primary/10 to-base-primary/5">
+            <CardTitle className="flex items-center text-base-primary">
+              <MessageSquare className="mr-2 h-5 w-5 text-base-accent" />
+              Base AI Chat
             </CardTitle>
             <CardDescription>
-              Ask questions about Monad or request smart contract generation
+              Ask questions about Base or request smart contract generation
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -668,12 +668,12 @@ const ChatInterface: React.FC = () => {
                   <div 
                     className={`inline-block max-w-[80%] p-3 rounded-2xl ${
                       message.role === 'user' 
-                        ? 'bg-monad-primary text-white' 
+                        ? 'bg-base-primary text-white' 
                         : 'bg-gray-200 text-gray-800'
                     }`}
                   >
                     <div className="text-sm mb-1">
-                      {message.role === 'user' ? 'You' : 'Monad AI'} • {formatDate(message.timestamp)}
+                      {message.role === 'user' ? 'You' : 'Base AI'} • {formatDate(message.timestamp)}
                     </div>
                     <div className="whitespace-pre-wrap">
                       {message.content.split('\n\n').map((paragraph, idx) => (
@@ -685,7 +685,7 @@ const ChatInterface: React.FC = () => {
                               href={paragraph.split('](')[1].replace(')', '')} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-monad-accent hover:underline"
+                              className="text-base-accent hover:underline"
                             >
                               {paragraph.split('](')[0].replace('- [', '')}
                             </a>
@@ -718,7 +718,7 @@ const ChatInterface: React.FC = () => {
                         <div className="flex flex-wrap gap-2 mt-3">
                           <Button 
                             size="sm" 
-                            className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                            className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                             onClick={compileContract}
                             disabled={isCompiling}
                           >
@@ -732,7 +732,7 @@ const ChatInterface: React.FC = () => {
                                 <span>
                                   <Button 
                                     size="sm" 
-                                    className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                                    className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                                     onClick={deploySmartContract}
                                     disabled={isDeployButtonDisabled()}
                                   >
@@ -815,7 +815,7 @@ const ChatInterface: React.FC = () => {
               <Textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about Monad or request a smart contract..."
+                placeholder="Ask about Base or request a smart contract..."
                 className="flex-1 resize-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -825,7 +825,7 @@ const ChatInterface: React.FC = () => {
                 }}
               />
               <Button 
-                className="bg-monad-primary hover:bg-monad-accent hover:text-black transition-colors"
+                className="bg-base-primary hover:bg-base-accent hover:text-black transition-colors"
                 onClick={handleSendMessage}
                 disabled={!inputValue.trim() || isTyping}
               >
@@ -841,9 +841,9 @@ const ChatInterface: React.FC = () => {
               <p className="text-sm text-gray-500 mb-2">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  "What is Monad?",
+                  "What is Base?",
                   "How does gas work?",
-                  "Create an ERC20 token called MonadCoin",
+                  "Create an ERC20 token called BaseCoin",
                   "Generate an NFT with royalties",
                   "Make a staking contract with 30 day lock",
                   "Create a DAO with 40% quorum"
@@ -852,7 +852,7 @@ const ChatInterface: React.FC = () => {
                     key={suggestion}
                     variant="outline"
                     size="sm"
-                    className="text-xs bg-gray-50 hover:bg-monad-primary/10"
+                    className="text-xs bg-gray-50 hover:bg-base-primary/10"
                     onClick={() => {
                       setInputValue(suggestion);
                     }}
@@ -896,7 +896,7 @@ const ChatInterface: React.FC = () => {
             href="https://x.com/0xFred_" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-monad-accent hover:underline transition-colors"
+            className="text-base-accent hover:underline transition-colors"
           >
             @0xFred_
           </a>

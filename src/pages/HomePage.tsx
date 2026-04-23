@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, ExternalLink, Clock } from "lucide-react";
 import { getWalletBalance, getWalletTransactions, formatAddress } from "@/utils/blockchain";
 import { Transaction } from "@/types/blockchain";
-import { MONAD_TESTNET } from "@/config/monad";
+import { BASE_TESTNET } from "@/config/base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import MonadMetrics from "@/components/dashboard/MonadMetrics";
+import BaseMetrics from "@/components/dashboard/BaseMetrics";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -53,9 +53,9 @@ const HomePage: React.FC = () => {
   return (
     <div>
       <div className="flex flex-col items-center justify-center text-center mb-12 pt-10">
-        <h1 className="text-5xl font-bold text-monad-primary mb-4">Welcome to Monad Rick 👨‍🔬</h1>
+        <h1 className="text-5xl font-bold text-base-primary mb-4">Welcome to Based Ricks 👨‍🔬</h1>
         <p className="text-lg text-gray-600 italic">
-          Generate smart contracts & ask Monad AI anything
+          Generate smart contracts & ask Base AI anything
         </p>
       </div>
 
@@ -70,7 +70,7 @@ const HomePage: React.FC = () => {
           <Button 
             onClick={handleSearch} 
             disabled={isLoading || !searchAddress}
-            className="bg-monad-primary hover:bg-monad-accent hover:text-black"
+            className="bg-base-primary hover:bg-base-accent hover:text-black"
           >
             {isLoading ? 'Searching...' : <MessageSquare className="h-4 w-4 mr-2" />}
             {!isLoading && 'Search'}
@@ -89,7 +89,7 @@ const HomePage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{walletBalance} MONAD</div>
+              <div className="text-2xl font-bold">{walletBalance} ETH</div>
             </CardContent>
           </Card>
 
@@ -121,7 +121,7 @@ const HomePage: React.FC = () => {
                       <TableRow key={tx.hash}>
                         <TableCell>
                           <a 
-                            href={`${MONAD_TESTNET.blockExplorerUrl}/tx/${tx.hash}`} 
+                            href={`${BASE_TESTNET.blockExplorerUrl}/tx/${tx.hash}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:underline flex items-center"
@@ -132,7 +132,7 @@ const HomePage: React.FC = () => {
                         </TableCell>
                         <TableCell>{formatAddress(tx.from)}</TableCell>
                         <TableCell>{formatAddress(tx.to)}</TableCell>
-                        <TableCell>{tx.value} MONAD</TableCell>
+                        <TableCell>{tx.value} ETH</TableCell>
                         <TableCell>{formatDate(tx.timestamp)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded text-xs ${
@@ -175,12 +175,12 @@ const HomePage: React.FC = () => {
                 onClick={handleChatClick}
               >
                 <MessageSquare className="mr-2 h-5 w-5" />
-                Open Monad AI Chat
+                Open Base AI Chat
               </Button>
             </CardContent>
           </Card>
           
-          <MonadMetrics />
+          <BaseMetrics />
         </div>
       )}
     </div>

@@ -1,9 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { MONAD_TESTNET } from '../../config/monad';
+import { BASE_TESTNET } from '../../config/base';
 import { toast } from 'sonner';
-import { addMonadNetwork } from '@/utils/blockchain';
+import { addBaseNetwork } from '@/utils/blockchain';
 
 // Define context type
 interface Web3ContextType {
@@ -48,8 +48,8 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
   useEffect(() => {
     const initProvider = async () => {
       try {
-        // Create a provider for Monad Testnet
-        const provider = new ethers.JsonRpcProvider(MONAD_TESTNET.rpcUrl);
+        // Create a provider for Base Sepolia
+        const provider = new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
         setProvider(provider);
       } catch (error) {
         console.error("Failed to initialize provider:", error);
@@ -114,11 +114,11 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       setChainId(chainId);
       
-      // Check if we need to switch to Monad Testnet
-      const targetChainId = `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`;
+      // Check if we need to switch to Base Sepolia
+      const targetChainId = `0x${parseInt(BASE_TESTNET.chainId).toString(16)}`;
       if (chainId !== targetChainId) {
         try {
-          // Try to switch to Monad Testnet
+          // Try to switch to Base Sepolia
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: targetChainId }],
@@ -130,11 +130,11 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
           // If the chain is not added to MetaMask, add it
           if (switchError.code === 4902) {
             try {
-              await addMonadNetwork();
-              toast.success("Monad Testnet added to your wallet");
+              await addBaseNetwork();
+              toast.success("Base Sepolia added to your wallet");
             } catch (addError) {
-              console.error("Failed to add Monad network:", addError);
-              toast.error("Failed to add Monad network to your wallet");
+              console.error("Failed to add Base network:", addError);
+              toast.error("Failed to add Base network to your wallet");
               throw addError;
             }
           } else {
@@ -169,9 +169,9 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
     setIsConnected(false);
     toast.info("Wallet disconnected");
     
-    // Reinitialize the read-only provider for Monad Testnet
+    // Reinitialize the read-only provider for Base Sepolia
     try {
-      const provider = new ethers.JsonRpcProvider(MONAD_TESTNET.rpcUrl);
+      const provider = new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
       setProvider(provider);
     } catch (error) {
       console.error("Failed to reinitialize provider:", error);
@@ -197,10 +197,10 @@ export const Web3Provider: React.FC<{children: React.ReactNode}> = ({ children }
         setChainId(chainId);
         toast.info("Network changed");
         
-        // Check if the new chain is Monad Testnet
-        const targetChainId = `0x${parseInt(MONAD_TESTNET.chainId).toString(16)}`;
+        // Check if the new chain is Base Sepolia
+        const targetChainId = `0x${parseInt(BASE_TESTNET.chainId).toString(16)}`;
         if (chainId !== targetChainId && isConnected) {
-          toast.warning("Please switch to Monad Testnet for full functionality");
+          toast.warning("Please switch to Base Sepolia for full functionality");
         }
       };
 
