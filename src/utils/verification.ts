@@ -88,7 +88,7 @@ export const verifyContractOnSourcify = async (
       },
       body: JSON.stringify({
         address: contractAddress,
-        chain: "8453", // Base Sepolia Chain ID
+        chain: "8453", // Base Mainnet Chain ID
         files: {
           metadata: JSON.stringify(metadata),
           solidity: sourceCode
