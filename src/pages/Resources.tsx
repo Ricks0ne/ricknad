@@ -92,7 +92,7 @@ const Resources: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4">Join the Base Community</h3>
         <div className="flex justify-center space-x-4">
           <a 
-            href="https://twitter.com/monad_xyz" 
+            href="https://twitter.com/base" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-base-primary hover:text-base-accent"
@@ -100,7 +100,7 @@ const Resources: React.FC = () => {
             Twitter
           </a>
           <a 
-            href="https://discord.gg/monad" 
+            href="https://discord.gg/buildonbase" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-base-primary hover:text-base-accent"
@@ -108,7 +108,7 @@ const Resources: React.FC = () => {
             Discord
           </a>
           <a 
-            href="https://t.me/monad_xyz" 
+            href="https://twitter.com/base" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-base-primary hover:text-base-accent"
