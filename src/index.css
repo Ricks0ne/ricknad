@@ -140,11 +140,11 @@
   }
   
   .base-glow {
-    box-shadow: 0 0 15px 2px rgba(125, 249, 255, 0.25);
+    box-shadow: none;
   }
   
   .base-border {
-    @apply border border-base-primary/50;
+    @apply border border-base-primary;
   }
 }
 
@@ -163,7 +163,7 @@
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -184,37 +184,36 @@
 
 /* Button animations */
 button {
-  @apply transition-all duration-200;
+  @apply transition-all duration-200 ease-in-out;
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* Card styles */
+/* Card styles — flat, technical */
 .card {
-  @apply rounded-xl border border-white/10 bg-card shadow-sm;
+  @apply rounded-md border border-border bg-card;
 }
 
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:shadow-base-primary/20;
+  @apply transition-colors duration-200 hover:border-base-primary;
 }
 
-/* Neon accent effects */
+/* Flat accent (no neon/glow) */
 .neon-border {
-  @apply border border-base-primary shadow-lg shadow-base-primary/30;
+  @apply border border-base-primary;
 }
 
 .neon-text {
   @apply text-base-primary;
-  text-shadow: 0 0 5px rgba(125, 249, 255, 0.5);
 }
 
-/* Chat bubble styles */
+/* Chat bubble styles — flat */
 .chat-bubble-ai {
-  @apply bg-base-dark text-white border border-base-primary/20 rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-card text-foreground border border-border rounded-md p-4 animate-fade-in;
 }
 
 .chat-bubble-user {
-  @apply bg-black/50 border border-white/10 rounded-2xl p-4 animate-fade-in shadow-sm;
+  @apply bg-secondary text-foreground border border-border rounded-md p-4 animate-fade-in;
 }
