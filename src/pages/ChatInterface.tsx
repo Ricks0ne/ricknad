@@ -704,11 +704,14 @@ const ChatInterface: React.FC = () => {
         throw new Error("Please connect your wallet first.");
       }
       
-      if (account) {
-        const hasEnough = await hasEnoughBalance(account);
-        if (!hasEnough) {
-          throw new Error("Insufficient ETH balance on Base Mainnet to cover deployment gas. Please bridge ETH to Base via https://bridge.base.org/.");
-        }
+      const estimate = await estimateDeploymentCost(currentContract.abi, currentContract.bytecode, signer);
+      setDeploymentEstimate({
+        balanceEth: estimate.balanceEth,
+        estimatedCostEth: estimate.estimatedCostEth,
+      });
+
+      if (estimate.balance < estimate.totalCost) {
+        throw new Error(`Insufficient ETH. Balance: ${estimate.balanceEth} ETH. Estimated deployment cost: ${estimate.estimatedCostEth} ETH.`);
       }
       
       toast.info("Please confirm the transaction in your wallet...");
