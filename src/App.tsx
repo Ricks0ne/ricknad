@@ -7,6 +7,7 @@ import { Web3Provider } from "@/components/web3/Web3Provider";
 import Layout from "@/components/layout/Layout";
 import HomePage from "./pages/HomePage";
 import ChatInterface from "./pages/ChatInterface";
+import MyContractsPage from "./pages/MyContractsPage";
 import Resources from "./pages/Resources";
 import NotFound from "./pages/NotFound";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -31,6 +32,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Layout><HomePage /></Layout>} />
             <Route path="/chat" element={<Layout><ChatInterface /></Layout>} />
+            <Route path="/contracts" element={<Layout><MyContractsPage /></Layout>} />
             <Route path="/resources" element={<Layout><Resources /></Layout>} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>

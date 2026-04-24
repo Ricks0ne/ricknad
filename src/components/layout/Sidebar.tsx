@@ -39,6 +39,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       icon: <MessageSquare className="h-5 w-5" />,
     },
     {
+      name: 'My Contracts',
+      path: '/contracts',
+      icon: <FileCode className="h-5 w-5" />,
+    },
+    {
       name: 'Resources',
       path: '/resources',
       icon: <LinkIcon className="h-5 w-5" />,
