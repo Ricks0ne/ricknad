@@ -159,6 +159,7 @@ interface RawBaseScanTx {
   value: string;
   gasUsed?: string;
   timeStamp: string;
+  blockNumber?: string;
   isError?: string;
   txreceipt_status?: string;
   contractAddress?: string;
@@ -265,23 +266,36 @@ export interface TxListFetchResult {
 export const fetchBaseScanTxList = async (address: string): Promise<TxListFetchResult> => {
   if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
 
-  // Cap pages to avoid runaway fetches for ultra-active addresses.
-  const MAX_PAGES = 10;
+  // Cap chunks to avoid runaway fetches for ultra-active addresses.
+  const MAX_CHUNKS = 10;
 
+  // Block-based continuation instead of page-based pagination: Etherscan V2
+  // and Blockscout both cap `page * offset <= 10000`, so naive pagination
+  // fails on page 2. Instead, after a full 10k-result chunk, we advance
+  // `startblock` past the last returned block and request again.
   const runPaginated = async (
     buildUrl: (params: Record<string, string>) => string,
   ): Promise<RawBaseScanTx[]> => {
     const all: RawBaseScanTx[] = [];
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
+    let startblock = "0";
+    for (let chunk = 0; chunk < MAX_CHUNKS; chunk += 1) {
       const url = buildUrl({
         sort: "asc",
-        page: String(page),
+        page: "1",
         offset: String(BASESCAN_MAX_OFFSET),
+        startblock,
       });
       const batch = await fetchTxListPage(url);
       if (batch === "empty") break;
       all.push(...batch);
       if (batch.length < BASESCAN_MAX_OFFSET) break;
+      const lastBlock = batch[batch.length - 1]?.blockNumber;
+      const lastBlockNum = lastBlock ? Number(lastBlock) : NaN;
+      if (!Number.isFinite(lastBlockNum)) break;
+      // Advance past the last-seen block. This may miss siblings in the
+      // same block (rare for a single EOA) but guarantees forward progress
+      // within the API's page*offset <= 10000 limit.
+      startblock = String(lastBlockNum + 1);
     }
     return all;
   };
