@@ -10,9 +10,11 @@
  *   https://api.etherscan.io/v2/api?chainid=8453
  * is the canonical path for Base Mainnet.
  *
- * IMPORTANT: free-tier Etherscan keys do NOT cover Base verification writes;
- * callers should surface the `NoPlanError` to the UI verbatim so the user
- * can understand why the submit failed.
+ * Error handling: the `plan_not_supported` / `rate_limited` branches only
+ * fire when Etherscan returns one of those messages verbatim. Any other
+ * non-OK response is surfaced to the UI as-is (including the common
+ * `Unable to locate ContractCode at …` / `Fail - Unable to verify` /
+ * compiler-mismatch reasons) so the user sees BaseScan's exact feedback.
  */
 
 import { BASE_MAINNET } from "@/config/base";
@@ -88,8 +90,12 @@ export const submitVerification = async (
     return { kind: "already_verified", source: alreadyVerified.source };
   }
 
+  // Etherscan V2 requires `chainid` in the URL query string, NOT the POST body.
+  // Empirically: POSTing with `chainid` only in the body returns
+  // `Missing or unsupported chainid parameter (required for v2 api)`.
+  const endpoint = `${ETHERSCAN_V2_URL}?chainid=${encodeURIComponent(CHAIN_ID)}`;
+
   const body = new URLSearchParams();
-  body.set("chainid", CHAIN_ID);
   body.set("apikey", apiKey);
   body.set("module", "contract");
   body.set("action", "verifysourcecode");
@@ -105,7 +111,7 @@ export const submitVerification = async (
   body.set("constructorArguements", normalizeConstructorArgs(input.constructorArguments));
 
   try {
-    const response = await fetch(ETHERSCAN_V2_URL, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
