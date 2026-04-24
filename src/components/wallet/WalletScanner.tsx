@@ -160,7 +160,19 @@ const WalletScanner: React.FC<WalletScannerProps> = ({ initialAddress = "" }) =>
       if (background) setIsRefreshing(true);
       else setIsLoading(true);
       try {
-        const result = await scanWalletAnalytics(address);
+        // Progressive render: the first callback lands with normal + internal
+        // txs so the 5 cards paint in a couple of seconds; the returned
+        // promise carries the full snapshot including token transfers.
+        const result = await scanWalletAnalytics(address, {
+          onPartial: (partial) => {
+            setAnalytics(partial);
+            // Swap the skeleton out for the partial result immediately;
+            // keep `isRefreshing` on so the refresh-button spinner signals
+            // that token-transfer data is still loading.
+            setIsLoading(false);
+            setIsRefreshing(true);
+          },
+        });
         setAnalytics(result);
         setError(null);
         setIsRateLimited(false);
@@ -173,8 +185,8 @@ const WalletScanner: React.FC<WalletScannerProps> = ({ initialAddress = "" }) =>
           setError(err instanceof Error ? err.message : "Failed to scan wallet.");
         }
       } finally {
-        if (background) setIsRefreshing(false);
-        else setIsLoading(false);
+        setIsRefreshing(false);
+        if (!background) setIsLoading(false);
       }
     },
     [],
@@ -262,13 +274,21 @@ const WalletScanner: React.FC<WalletScannerProps> = ({ initialAddress = "" }) =>
           <StatCard title="Balance" icon={<Wallet className="h-4 w-4" />} sub="ETH on Base Mainnet">
             <AnimatedNumber value={Number(analytics.balanceEth)} decimals={4} /> ETH
           </StatCard>
-          <StatCard title="Total Transactions" icon={<Hash className="h-4 w-4" />} sub={`via ${BASE_MAINNET.blockExplorerUrl.replace(/^https?:\/\//, "")}`}>
+          <StatCard
+            title="Total Transactions"
+            icon={<Hash className="h-4 w-4" />}
+            sub={`${analytics.normalTxCount.toLocaleString()} normal · ${analytics.internalTxCount.toLocaleString()} internal · ${analytics.tokenTxCount.toLocaleString()} token`}
+          >
             <AnimatedNumber value={analytics.totalTransactions} />
           </StatCard>
           <StatCard title="Wallet Age" icon={<TimerReset className="h-4 w-4" />} sub={analytics.firstActivityTimestamp ? `First activity: ${formatDateTime(analytics.firstActivityTimestamp)}` : "No on-chain activity"}>
             {formatWalletAge(analytics.walletAgeMs)}
           </StatCard>
-          <StatCard title="Contracts Interacted" icon={<CircleDollarSign className="h-4 w-4" />} sub="Unique 'to' addresses">
+          <StatCard
+            title="Contracts Interacted"
+            icon={<CircleDollarSign className="h-4 w-4" />}
+            sub="Verified via eth_getCode"
+          >
             <AnimatedNumber value={analytics.uniqueContractsInteracted} />
           </StatCard>
           <StatCard title="Last Active" icon={<Clock className="h-4 w-4" />} sub={analytics.lastActivityTimestamp ? formatDateTime(analytics.lastActivityTimestamp) : "—"}>
@@ -285,7 +305,7 @@ const WalletScanner: React.FC<WalletScannerProps> = ({ initialAddress = "" }) =>
               <CardDescription>
                 {showEmptyState
                   ? "No transactions found for this wallet on Base Mainnet."
-                  : `Showing ${Math.min(TX_PREVIEW_LIMIT, analytics.transactions.length)} of ${analytics.totalTransactions.toLocaleString()} transactions · source: ${analytics.source === "etherscan-v2" ? "BaseScan (Etherscan V2)" : "Blockscout"} · auto-refresh every 15s`}
+                  : `Showing ${Math.min(TX_PREVIEW_LIMIT, analytics.transactions.length)} of ${analytics.totalTransactions.toLocaleString()} records (normal + internal + token) · source: ${analytics.source === "etherscan-v2" ? "BaseScan (Etherscan V2)" : "Blockscout"} · auto-refresh every 15s`}
               </CardDescription>
             </div>
             <Clock className="h-5 w-5 text-muted-foreground" />
