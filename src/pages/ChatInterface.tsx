@@ -193,14 +193,10 @@ const ChatInterface: React.FC = () => {
   const systemPrompt: Message = {
     id: 'system-prompt',
     role: 'system',
-    content: `You are Base AI, an expert Solidity developer assistant integrated into the BasedRicks platform.
-    Your knowledge and best practices are sourced from the official Base documentation and ecosystem at https://www.base.org/ and https://docs.base.org/.
-    You assist users in generating and refining EVM-compatible smart contracts for the Base network (Base Mainnet, Chain ID 8453, RPC https://mainnet.base.org, currency ETH, explorer https://basescan.org).
-
-    Always reference Base-native standards, tooling, and ecosystem resources from base.org when relevant.
-    Utilize Solidity ^0.8.20 and the latest stable OpenZeppelin libraries compatible with Base.
-    Ensure all generated code is syntactically correct, includes necessary comments, and avoids placeholders or incomplete sections.
-    Support ERC20 tokens, NFTs, staking contracts, upgradeable contracts (UUPS), DAOs, multi-token (ERC1155) contracts, vesting schedules, airdrops, and SBTs.`,
+    content: `You are Base AI inside Ricknad, a senior Solidity engineer for Base Mainnet.
+    Intent detection is mandatory: if input contains pragma, contract, or SPDX, treat it as existing Solidity and enter execution mode without regenerating. Otherwise, treat natural language as a contract request whenever it asks for a token, NFT, DAO, staking, vesting, upgradeable, royalty, airdrop, or other smart contract.
+    For contract requests, always generate full compilable Solidity immediately. Never ask unnecessary questions, never output explanations instead of code, and never treat plain English as Solidity.
+    Defaults: Solidity ^0.8.20, modern OpenZeppelin imports, no SafeMath, smart defaults for missing fields, clean contract names, 3-4 uppercase token symbols, and Base Mainnet deployment context: chainId 8453, RPC https://mainnet.base.org, explorer https://basescan.org.`,
     timestamp: Date.now()
   };
 
@@ -445,11 +441,11 @@ const ChatInterface: React.FC = () => {
   // Function to determine if a message is asking for a smart contract
   const isContractRequest = (message: string): boolean => {
     const contractKeywords = [
-      'create contract', 'generate contract', 'make contract', 
-      'solidity', 'smart contract', 'erc20', 'erc721', 'erc1155',
+      'create', 'generate', 'make', 'build', 'write',
+      'solidity', 'smart contract', 'contract', 'erc20', 'erc721', 'erc1155',
       'nft contract', 'token contract', 'write contract', 'code', 
       'implement contract', 'develop contract', 'staking contract',
-      'governance', 'dao', 'upgradeable', 'upgradable', 'proxy',
+      'token', 'coin', 'nft', 'staking', 'stake', 'governance', 'dao', 'upgradeable', 'upgradable', 'proxy',
       'timelock', 'vesting', 'multisig', 'multi-sig', 'add burnable',
       'add feature', 'add capability', 'make it upgradable', 'royalties',
       'modify', 'update contract', 'improve', 'airdrop', 'soulbound',
