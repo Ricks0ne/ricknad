@@ -3,6 +3,18 @@ import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
 import { Transaction } from "../types/blockchain";
 
+const BASESCAN_API_URL = "https://api.basescan.org/api";
+const BLOCKSCOUT_API_URL = "https://base.blockscout.com/api";
+
+export interface BaseNetworkMetrics {
+  blockNumber: number;
+  gasPriceWei: bigint;
+  gasPriceGwei: string;
+  blockTimestamp: number;
+  txCount: number;
+  connected: boolean;
+}
+
 export interface DeploymentCostEstimate {
   chainId: bigint;
   balance: bigint;
@@ -14,7 +26,7 @@ export interface DeploymentCostEstimate {
   gasPriceGwei: string;
 }
 
-// Initialize a provider for the Base testnet
+// Initialize a provider for Base Mainnet
 export const getProvider = () => {
   try {
     return new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
@@ -24,15 +36,54 @@ export const getProvider = () => {
   }
 };
 
+export const isValidWalletAddress = (address: string) => ethers.isAddress(address);
+
+export const assertBaseMainnet = async (provider = getProvider()) => {
+  const network = await provider.getNetwork();
+  console.log("Base RPC chainId:", network.chainId.toString());
+  if (network.chainId !== BigInt(BASE_TESTNET.chainId)) {
+    throw new Error(`RPC is not connected to Base Mainnet. Expected chainId ${BASE_TESTNET.chainId}, got ${network.chainId.toString()}.`);
+  }
+  return network;
+};
+
+export const fetchBaseNetworkMetrics = async (): Promise<BaseNetworkMetrics> => {
+  const provider = getProvider();
+  await assertBaseMainnet(provider);
+
+  const [blockHex, gasPriceHex] = await Promise.all([
+    provider.send("eth_blockNumber", []),
+    provider.send("eth_gasPrice", []),
+  ]);
+
+  const blockNumber = Number(BigInt(blockHex));
+  const gasPriceWei = BigInt(gasPriceHex);
+  const block = await provider.getBlock(blockNumber);
+
+  if (!block) throw new Error("Unable to fetch latest Base block from RPC.");
+
+  return {
+    blockNumber,
+    gasPriceWei,
+    gasPriceGwei: Number(ethers.formatUnits(gasPriceWei, "gwei")).toFixed(4),
+    blockTimestamp: block.timestamp * 1000,
+    txCount: block.transactions.length,
+    connected: true,
+  };
+};
+
 // Get wallet balance
 export const getWalletBalance = async (address: string) => {
   try {
+    if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
     const provider = getProvider();
+    await assertBaseMainnet(provider);
     const balance = await provider.getBalance(address);
+    console.log("Base wallet balance:", ethers.formatEther(balance));
     return ethers.formatEther(balance);
   } catch (error) {
     console.error("Failed to get wallet balance:", error);
-    return "0";
+    throw error;
   }
 };
 
