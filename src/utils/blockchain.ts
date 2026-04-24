@@ -124,6 +124,158 @@ const mapIndexerTransaction = (tx: any): Transaction => ({
   status: tx.isError === "1" || tx.status === "0" ? "failed" : "success",
 });
 
+export class RateLimitError extends Error {
+  constructor(message = "BaseScan API rate limit reached. Please wait a moment and retry.") {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
+export interface WalletAnalytics {
+  address: string;
+  balanceEth: string;
+  totalTransactions: number;
+  uniqueContractsInteracted: number;
+  firstActivityTimestamp: number | null;
+  lastActivityTimestamp: number | null;
+  walletAgeMs: number | null;
+  transactions: Transaction[];
+}
+
+const BASESCAN_MAX_OFFSET = 10000;
+
+interface RawBaseScanTx {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  gasUsed?: string;
+  timeStamp: string;
+  isError?: string;
+  txreceipt_status?: string;
+  contractAddress?: string;
+  functionName?: string;
+  input?: string;
+}
+
+const buildBaseScanTxListUrl = (address: string, params: Record<string, string>): string => {
+  const key = import.meta.env.VITE_BASESCAN_API_KEY;
+  const search = new URLSearchParams({
+    module: "account",
+    action: "txlist",
+    address,
+    startblock: "0",
+    endblock: "99999999",
+    ...params,
+  });
+  if (key) search.set("apikey", key);
+  return `${BASESCAN_API_URL}?${search.toString()}`;
+};
+
+const isRateLimitMessage = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("max rate") ||
+    lower.includes("too many requests")
+  );
+};
+
+// Fetch the complete sorted-ASC transaction history from BaseScan.
+// Paginates in chunks of BASESCAN_MAX_OFFSET so we get the true total count
+// and the accurate first-activity timestamp.
+export const fetchBaseScanTxList = async (address: string): Promise<RawBaseScanTx[]> => {
+  if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
+
+  const all: RawBaseScanTx[] = [];
+  let page = 1;
+  // Cap pages to avoid runaway fetches for ultra-active addresses.
+  const MAX_PAGES = 10;
+
+  while (page <= MAX_PAGES) {
+    const url = buildBaseScanTxListUrl(address, {
+      sort: "asc",
+      page: String(page),
+      offset: String(BASESCAN_MAX_OFFSET),
+    });
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`BaseScan responded with ${response.status}: ${response.statusText}`);
+    }
+
+    // Etherscan-compatible API: status "0" with message "No transactions found" is success+empty.
+    if (data.status === "0") {
+      const msg: string = typeof data.message === "string" ? data.message : "";
+      const resultMsg: string = typeof data.result === "string" ? data.result : "";
+      if (msg.toLowerCase().includes("no transactions found")) break;
+      if (isRateLimitMessage(msg) || isRateLimitMessage(resultMsg)) {
+        throw new RateLimitError();
+      }
+      throw new Error(resultMsg || msg || "BaseScan request failed.");
+    }
+
+    const batch: RawBaseScanTx[] = Array.isArray(data.result) ? data.result : [];
+    all.push(...batch);
+
+    if (batch.length < BASESCAN_MAX_OFFSET) break;
+    page += 1;
+  }
+
+  return all;
+};
+
+const mapBaseScanTx = (tx: RawBaseScanTx): Transaction => ({
+  hash: tx.hash,
+  from: tx.from,
+  to: tx.to || tx.contractAddress || "",
+  value: ethers.formatEther(BigInt(tx.value || "0")),
+  gasUsed: tx.gasUsed || "0",
+  timestamp: tx.timeStamp ? Number(tx.timeStamp) * 1000 : 0,
+  status:
+    tx.isError === "1" || tx.txreceipt_status === "0"
+      ? "failed"
+      : "success",
+});
+
+// Full wallet analytics per the Ricknad BaseScan integration spec:
+// - Balance via RPC eth_getBalance
+// - Transaction history via BaseScan txlist (module=account, sort=asc)
+// - totalTransactions, walletAge, firstActivity, uniqueContracts, lastActivity derived from the list
+export const scanWalletAnalytics = async (address: string): Promise<WalletAnalytics> => {
+  if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
+
+  const [balanceEth, rawTxs] = await Promise.all([
+    getWalletBalance(address),
+    fetchBaseScanTxList(address),
+  ]);
+
+  const transactions = rawTxs.map(mapBaseScanTx);
+  const first = rawTxs[0];
+  const last = rawTxs[rawTxs.length - 1];
+
+  const uniqueContracts = new Set<string>();
+  for (const tx of rawTxs) {
+    // "to" is empty for contract-creation txs; those have a contractAddress instead.
+    // Either way, dedupe non-empty targets so we match the spec's "Unique Contract Interactions".
+    const target = (tx.to || tx.contractAddress || "").toLowerCase();
+    if (target) uniqueContracts.add(target);
+  }
+
+  return {
+    address,
+    balanceEth,
+    totalTransactions: rawTxs.length,
+    uniqueContractsInteracted: uniqueContracts.size,
+    firstActivityTimestamp: first?.timeStamp ? Number(first.timeStamp) * 1000 : null,
+    lastActivityTimestamp: last?.timeStamp ? Number(last.timeStamp) * 1000 : null,
+    walletAgeMs: first?.timeStamp ? Date.now() - Number(first.timeStamp) * 1000 : null,
+    transactions,
+  };
+};
+
 // Get wallet transaction history from an indexed source; Base RPC does not expose account history.
 export const getWalletTransactions = async (address: string, limit = 5): Promise<Transaction[]> => {
   try {
