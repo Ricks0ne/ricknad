@@ -910,6 +910,15 @@ const ChatInterface: React.FC = () => {
                             {isCompiling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                             {isCompiling ? 'Compiling...' : 'Compile'}
                           </Button>
+
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => copyToClipboard(message.contractData?.code || '', 'Contract code copied!')}
+                          >
+                            <Copy className="mr-1 h-3 w-3" />
+                            Copy Code
+                          </Button>
                           
                           <TooltipProvider>
                             <Tooltip>
