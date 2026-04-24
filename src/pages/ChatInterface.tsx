@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { BASE_TESTNET } from "@/config/base";
-import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
+import { deployContract, estimateDeploymentCost, formatAddress } from "@/utils/blockchain";
 import { generateContract } from "@/utils/enhancedContractGenerator";
 import { toast } from "sonner";
 import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
@@ -147,7 +147,7 @@ const applyContractModification = (code: string, instruction: string): string =>
 };
 
 const ChatInterface: React.FC = () => {
-  const { account, signer, isConnected, connectWallet } = useWeb3();
+  const { signer, isConnected, connectWallet } = useWeb3();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -155,6 +155,10 @@ const ChatInterface: React.FC = () => {
   const [isCompiled, setIsCompiled] = useState(false);
   const [compilationError, setCompilationError] = useState<string | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deploymentEstimate, setDeploymentEstimate] = useState<{
+    balanceEth: string;
+    estimatedCostEth: string;
+  } | null>(null);
   const [currentContract, setCurrentContract] = useState<{
     name: string;
     code: string;
@@ -547,6 +551,7 @@ const ChatInterface: React.FC = () => {
     setIsCompiling(true);
     setIsCompiled(false);
     setCompilationError(null);
+    setDeploymentEstimate(null);
     
     try {
       console.log("Starting contract compilation...");
@@ -700,11 +705,14 @@ const ChatInterface: React.FC = () => {
         throw new Error("Please connect your wallet first.");
       }
       
-      if (account) {
-        const hasEnough = await hasEnoughBalance(account);
-        if (!hasEnough) {
-          throw new Error("Insufficient ETH balance on Base Mainnet to cover deployment gas. Please bridge ETH to Base via https://bridge.base.org/.");
-        }
+      const estimate = await estimateDeploymentCost(currentContract.abi, currentContract.bytecode, signer);
+      setDeploymentEstimate({
+        balanceEth: estimate.balanceEth,
+        estimatedCostEth: estimate.estimatedCostEth,
+      });
+
+      if (estimate.balance < estimate.totalCost) {
+        throw new Error(`Insufficient ETH. Balance: ${estimate.balanceEth} ETH. Estimated deployment cost: ${estimate.estimatedCostEth} ETH.`);
       }
       
       toast.info("Please confirm the transaction in your wallet...");
@@ -970,6 +978,14 @@ const ChatInterface: React.FC = () => {
                               <p className="text-sm text-red-700 font-medium">Compilation Error</p>
                             </div>
                             <p className="text-xs text-red-600 mt-1">{compilationError}</p>
+                          </div>
+                        )}
+
+                        {deploymentEstimate && (
+                          <div className="mt-3 p-3 bg-muted rounded-lg border text-left">
+                            <p className="text-sm font-medium">Deployment Preflight</p>
+                            <p className="text-xs mt-1">User balance: {deploymentEstimate.balanceEth} ETH</p>
+                            <p className="text-xs mt-1">Estimated deployment cost: {deploymentEstimate.estimatedCostEth} ETH</p>
                           </div>
                         )}
                         

@@ -3,6 +3,17 @@ import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
 import { Transaction } from "../types/blockchain";
 
+export interface DeploymentCostEstimate {
+  chainId: bigint;
+  balance: bigint;
+  estimatedGas: bigint;
+  gasPrice: bigint;
+  totalCost: bigint;
+  balanceEth: string;
+  estimatedCostEth: string;
+  gasPriceGwei: string;
+}
+
 // Initialize a provider for the Base testnet
 export const getProvider = () => {
   try {
@@ -174,6 +185,64 @@ export const deployContract = async (abi: any[], bytecode: string, signer: ether
     console.error("Failed to deploy contract:", error);
     throw error;
   }
+};
+
+export const estimateDeploymentCost = async (
+  abi: any[],
+  bytecode: string,
+  signer: ethers.Signer,
+): Promise<DeploymentCostEstimate> => {
+  const provider = signer.provider;
+  if (!provider) throw new Error("No wallet provider available for gas estimation.");
+
+  const network = await provider.getNetwork();
+  console.log("Base deployment chainId:", network.chainId.toString());
+
+  if (network.chainId !== BigInt(BASE_TESTNET.chainId)) {
+    throw new Error(`Wrong network. Please switch to Base Mainnet (chainId ${BASE_TESTNET.chainId}).`);
+  }
+
+  const userAddress = await signer.getAddress();
+  const balance = await provider.getBalance(userAddress);
+  console.log("Base deployment balance:", ethers.formatEther(balance));
+
+  const formattedBytecode = bytecode.startsWith('0x') ? bytecode : `0x${bytecode}`;
+  try {
+    ethers.getBytes(formattedBytecode);
+  } catch (error) {
+    console.error("Invalid bytecode format:", error);
+    throw new Error("Invalid bytecode format. Please recompile the contract.");
+  }
+
+  const factory = new ethers.ContractFactory(abi, formattedBytecode, signer);
+  let estimatedGas: bigint;
+
+  try {
+    const deployTransaction = await factory.getDeployTransaction();
+    estimatedGas = await signer.estimateGas(deployTransaction);
+  } catch (error: any) {
+    console.error("Deployment gas estimation failed:", error);
+    throw new Error(error?.shortMessage || error?.reason || error?.message || "Gas estimation failed.");
+  }
+
+  console.log("Base deployment estimated gas:", estimatedGas.toString());
+
+  const feeData = await provider.getFeeData();
+  const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas;
+  if (!gasPrice) throw new Error("Unable to fetch current Base Mainnet gas price.");
+
+  const totalCost = estimatedGas * gasPrice;
+
+  return {
+    chainId: network.chainId,
+    balance,
+    estimatedGas,
+    gasPrice,
+    totalCost,
+    balanceEth: ethers.formatEther(balance),
+    estimatedCostEth: ethers.formatEther(totalCost),
+    gasPriceGwei: ethers.formatUnits(gasPrice, "gwei"),
+  };
 };
 
 // Check if wallet has enough balance to deploy a contract
