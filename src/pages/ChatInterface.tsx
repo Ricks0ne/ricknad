@@ -49,6 +49,103 @@ interface Message {
   };
 }
 
+const SOLIDITY_DETECTION_PATTERN = /(pragma\s+solidity|contract\s+\w+|\/\/\s*SPDX-License-Identifier:)/i;
+const MODIFICATION_PATTERN = /(modify|update|change|add|remove|make this|make it|upgradeable|upgradable|staking|burn|mint|pause|royalt|soulbound)/i;
+
+const isSolidityCode = (value: string): boolean => SOLIDITY_DETECTION_PATTERN.test(value.trim());
+
+const extractContractName = (code: string): string => {
+  const match = code.match(/\b(?:contract|interface|library)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  return match?.[1] || 'DetectedContract';
+};
+
+const extractSolidityVersion = (code: string): string => {
+  const match = code.match(/pragma\s+solidity\s+([^;]+);/i);
+  return match?.[1]?.trim() || 'Not specified';
+};
+
+const detectContractFeatures = (code: string): string[] => {
+  const features = new Set<string>();
+  const checks: Array<[string, RegExp]> = [
+    ['ERC20', /ERC20|IERC20|token\/ERC20/i],
+    ['ERC721 NFT', /ERC721|IERC721|token\/ERC721/i],
+    ['ERC1155 Multi-token', /ERC1155|IERC1155|token\/ERC1155/i],
+    ['Ownable', /Ownable|onlyOwner/i],
+    ['Access Control', /AccessControl|\bRole\b|hasRole/i],
+    ['Mint', /\bmint\b|_mint/i],
+    ['Burn', /\bburn\b|_burn|Burnable/i],
+    ['Pausable', /Pausable|whenNotPaused|_pause/i],
+    ['Upgradeable', /Upgradeable|Initializable|UUPS|TransparentUpgradeableProxy/i],
+    ['Staking', /stake|staking|reward/i],
+    ['Vesting', /vesting|releaseTime|cliff/i],
+  ];
+
+  checks.forEach(([label, pattern]) => {
+    if (pattern.test(code)) features.add(label);
+  });
+
+  return features.size ? Array.from(features) : ['Custom Solidity'];
+};
+
+const validateSolidityCode = (code: string): string | null => {
+  if (!/pragma\s+solidity/i.test(code)) return 'Missing Solidity pragma.';
+  if (!/\b(?:contract|interface|library)\s+[A-Za-z_][A-Za-z0-9_]*/.test(code)) return 'No contract, interface, or library declaration detected.';
+  return null;
+};
+
+const insertBeforeFinalBrace = (code: string, addition: string): string => {
+  const lastBrace = code.lastIndexOf('}');
+  if (lastBrace === -1) return `${code}\n${addition}`;
+  return `${code.slice(0, lastBrace).trimEnd()}\n${addition}\n${code.slice(lastBrace)}`;
+};
+
+const applyContractModification = (code: string, instruction: string): string => {
+  const lower = instruction.toLowerCase();
+  let updated = code;
+
+  if ((lower.includes('burn') || lower.includes('burnable')) && !/function\s+burn\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+    }`);
+  }
+
+  if ((lower.includes('pause') || lower.includes('pausable')) && !/function\s+pause\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    bool public paused;
+
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
+        _;
+    }
+
+    function pause() public {
+        paused = true;
+    }
+
+    function unpause() public {
+        paused = false;
+    }`);
+  }
+
+  if ((lower.includes('staking') || lower.includes('stake')) && !/function\s+stake\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    mapping(address => uint256) public stakedBalance;
+
+    function stake(uint256 amount) public {
+        require(amount > 0, "Amount must be greater than zero");
+        stakedBalance[msg.sender] += amount;
+    }
+
+    function unstake(uint256 amount) public {
+        require(stakedBalance[msg.sender] >= amount, "Insufficient staked balance");
+        stakedBalance[msg.sender] -= amount;
+    }`);
+  }
+
+  return updated;
+};
+
 const ChatInterface: React.FC = () => {
   const { account, signer, isConnected, connectWallet } = useWeb3();
   const [messages, setMessages] = useState<Message[]>([]);
