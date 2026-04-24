@@ -36,6 +36,7 @@ export interface NetworkInfo {
   chainId: string;
   name: string;
   rpcUrl: string;
+  realtimeRpcUrl?: string;
   blockExplorerUrl: string;
   faucet?: string;
   currency: {

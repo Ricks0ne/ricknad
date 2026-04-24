@@ -6,6 +6,7 @@ export const BASE_MAINNET: NetworkInfo = {
   chainId: "8453",
   name: "Base Mainnet",
   rpcUrl: "https://mainnet.base.org",
+  realtimeRpcUrl: "https://mainnet-preconf.base.org",
   blockExplorerUrl: "https://basescan.org",
   currency: {
     name: "Ether",
