@@ -49,13 +49,31 @@ interface Message {
   };
 }
 
-const SOLIDITY_DETECTION_PATTERN = /(pragma\s+solidity|contract\s+\w+|\/\/\s*SPDX-License-Identifier:)/i;
 const MODIFICATION_PATTERN = /(modify|update|change|add|remove|make this|make it|upgradeable|upgradable|staking|burn|mint|pause|royalt|soulbound)/i;
 
-const isSolidityCode = (value: string): boolean => SOLIDITY_DETECTION_PATTERN.test(value.trim());
+// Structural Solidity markers. We intentionally require either a Solidity
+// pragma / SPDX header, or a real `contract|interface|library Name ... {`
+// declaration (with an opening brace). This prevents natural-language prompts
+// like "Make a staking contract with 30 day lock" from being treated as code
+// just because they happen to contain the word "contract".
+const SOLIDITY_PRAGMA_PATTERN = /pragma\s+solidity\b/i;
+const SOLIDITY_SPDX_PATTERN = /SPDX-License-Identifier/i;
+const SOLIDITY_DECLARATION_PATTERN =
+  /\b(?:abstract\s+)?(?:contract|interface|library)\s+[A-Za-z_]\w*\b[\s\S]*?\{/;
+
+const isSolidityCode = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (SOLIDITY_PRAGMA_PATTERN.test(trimmed)) return true;
+  if (SOLIDITY_SPDX_PATTERN.test(trimmed)) return true;
+  // Only treat a bare `contract|interface|library Foo { ... }` as code if an
+  // opening brace is present. Natural language never contains `{`.
+  if (trimmed.includes('{') && SOLIDITY_DECLARATION_PATTERN.test(trimmed)) return true;
+  return false;
+};
 
 const extractSoliditySource = (value: string): string => {
-  const start = value.search(/(\/\/\s*SPDX-License-Identifier:|pragma\s+solidity|contract\s+\w+)/i);
+  const start = value.search(/(\/\/\s*SPDX-License-Identifier:|pragma\s+solidity|\b(?:abstract\s+)?(?:contract|interface|library)\s+[A-Za-z_]\w*\s*[\s\S]*?\{)/i);
   if (start === -1) return value.trim();
   const source = value.slice(start);
   const lastBrace = source.lastIndexOf('}');
@@ -109,6 +127,17 @@ const validateSolidityCode = (code: string): string | null => {
   if (!/\b(?:contract|interface|library)\s+[A-Za-z_][A-Za-z0-9_]*/.test(code)) return 'No contract, interface, or library declaration detected.';
   return null;
 };
+
+// Minimum markers every AI-generated contract must contain before we
+// surface it to the user or allow compilation.
+const isValidGeneratedContract = (code: string): boolean => {
+  if (!code) return false;
+  if (!/pragma\s+solidity/i.test(code)) return false;
+  if (!/\bcontract\b/i.test(code)) return false;
+  return true;
+};
+
+const MAX_GENERATION_ATTEMPTS = 3;
 
 const insertBeforeFinalBrace = (code: string, addition: string): string => {
   const lastBrace = code.lastIndexOf('}');
@@ -521,11 +550,34 @@ const ChatInterface: React.FC = () => {
     // In a real implementation, you would use context from the conversation
     console.log('Generating contract from prompt:', message);
     console.log('Using conversation context:', conversationContext);
-    
-    const contractResult = generateContract(message);
-    
+
+    let contractResult = generateContract(message);
+    let attempt = 1;
+    while (!isValidGeneratedContract(contractResult.code) && attempt < MAX_GENERATION_ATTEMPTS) {
+      console.warn(
+        `Generated contract failed validation (attempt ${attempt}); retrying.`,
+        contractResult
+      );
+      attempt += 1;
+      contractResult = generateContract(message);
+    }
+
+    if (!isValidGeneratedContract(contractResult.code)) {
+      console.error('AI generation failed validation after retries:', contractResult);
+      const rejectionMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content:
+          "⚠️ I couldn't produce a valid Solidity contract for that prompt. Please rephrase your request or paste existing Solidity code to compile instead.",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, rejectionMessage]);
+      setConversationContext(prev => [...prev, rejectionMessage]);
+      return;
+    }
+
     console.log('Generated contract:', contractResult);
-    
+
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
@@ -560,7 +612,16 @@ const ChatInterface: React.FC = () => {
       toast.error("No contract code to compile");
       return;
     }
-    
+
+    // Defensive guard: never feed natural-language or clearly-malformed
+    // text to the compiler. Real Solidity must satisfy isSolidityCode().
+    if (!isSolidityCode(currentContract.code)) {
+      const reason = 'Current input is not Solidity code. Paste a contract or generate one before compiling.';
+      setCompilationError(reason);
+      toast.error(reason);
+      return;
+    }
+
     setIsCompiling(true);
     setIsCompiled(false);
     setCompilationError(null);
