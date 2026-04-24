@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Copy, ExternalLink, FileText, Search, Trash2, SquareCheck, Loader, ShieldCheck } from 'lucide-react';
+import { Copy, ExternalLink, FileText, Search, Trash2, SquareCheck, Loader, ShieldCheck, ShieldAlert, Code2 } from 'lucide-react';
 import { DeployedContract } from '@/types/blockchain';
 import { formatAddress } from '@/utils/blockchain';
-import { BASE_TESTNET } from '@/config/base';
+import { BASE_MAINNET } from '@/config/base';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getVerificationStatus } from '@/utils/verification';
@@ -23,6 +23,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedContract, setSelectedContract] = useState<DeployedContract | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogTab, setDialogTab] = useState<'interact' | 'verify' | 'abi'>('interact');
   const [exportUrl, setExportUrl] = useState<string | null>(null);
 
   // Load contracts from local storage
@@ -60,9 +61,27 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
     toast.success('Copied to clipboard!');
   };
 
-  // Open in explorer
+  // Open address in BaseScan
   const openInExplorer = (address: string) => {
-    window.open(`${BASE_TESTNET.blockExplorerUrl}/address/${address}`, '_blank');
+    window.open(`${BASE_MAINNET.blockExplorerUrl}/address/${address}`, '_blank');
+  };
+
+  // Open tx hash in BaseScan
+  const openTxInExplorer = (txHash: string) => {
+    window.open(`${BASE_MAINNET.blockExplorerUrl}/tx/${txHash}`, '_blank');
+  };
+
+  // Copy ABI to clipboard
+  const copyAbi = (abi: unknown[]) => {
+    navigator.clipboard.writeText(JSON.stringify(abi, null, 2));
+    toast.success('ABI copied to clipboard');
+  };
+
+  // Shorten a 0x-prefixed hash for display
+  const shortHash = (hash: string) => {
+    if (!hash) return '';
+    if (hash.length <= 14) return hash;
+    return `${hash.slice(0, 8)}…${hash.slice(-6)}`;
   };
 
   // Delete contract
@@ -212,36 +231,79 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
                 >
                   <div className="p-4 flex flex-col md:flex-row md:items-center justify-between bg-white">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-semibold text-lg">{contract.name}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-100 ${typeInfo.color}`}>
                           {typeInfo.label}
                         </span>
-                        
-                        {/* Add verification badge */}
-                        {verificationStatus === 'success' && (
+                        <Badge variant="outline" className="text-xs border-base-accent/40 text-base-primary">
+                          Base Mainnet
+                        </Badge>
+
+                        {/* Verification status badge: always visible */}
+                        {verificationStatus === 'success' ? (
                           <Badge className="bg-green-500 text-white flex items-center gap-1">
                             <ShieldCheck size={12} />
                             Verified
                           </Badge>
+                        ) : verificationStatus === 'pending' ? (
+                          <Badge className="bg-amber-500 text-white flex items-center gap-1">
+                            <Loader size={12} className="animate-spin" />
+                            Verification pending
+                          </Badge>
+                        ) : verificationStatus === 'failure' ? (
+                          <Badge className="bg-red-500 text-white flex items-center gap-1">
+                            <ShieldAlert size={12} />
+                            Verification failed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="flex items-center gap-1 text-gray-500 border-gray-300">
+                            <ShieldAlert size={12} />
+                            Unverified
+                          </Badge>
                         )}
                       </div>
                       
-                      <div className="flex items-center text-sm text-gray-500">
-                        <div className="flex items-center mr-4">
-                          Address: <span className="font-mono ml-1">{formatAddress(contract.address)}</span>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <span className="mr-1">Address:</span>
+                          <span className="font-mono">{formatAddress(contract.address)}</span>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="p-0 h-6 w-6 ml-1 text-gray-400 hover:text-gray-600"
                             onClick={() => copyToClipboard(contract.address)}
+                            title="Copy address"
                           >
                             <Copy size={14} />
                           </Button>
                         </div>
-                        
+
+                        {contract.deploymentTx ? (
+                          <div className="flex items-center">
+                            <span className="mr-1">Tx:</span>
+                            <button
+                              type="button"
+                              onClick={() => openTxInExplorer(contract.deploymentTx!)}
+                              className="font-mono underline-offset-2 hover:underline text-base-primary"
+                              title="Open transaction on BaseScan"
+                            >
+                              {shortHash(contract.deploymentTx)}
+                            </button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-0 h-6 w-6 ml-1 text-gray-400 hover:text-gray-600"
+                              onClick={() => copyToClipboard(contract.deploymentTx!)}
+                              title="Copy tx hash"
+                            >
+                              <Copy size={14} />
+                            </Button>
+                          </div>
+                        ) : null}
+
                         <div className="hidden md:block">
-                          {formatDate(contract.timestamp)}
+                          Deployed {formatDate(contract.timestamp)}
                         </div>
                       </div>
                       
@@ -275,14 +337,35 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
                         size="sm"
                         className="text-xs bg-base-primary text-white hover:bg-base-accent hover:text-black"
                         onClick={() => {
+                          onContractSelect(contract);
                           setSelectedContract(contract);
+                          setDialogTab('interact');
                           setIsDialogOpen(true);
                         }}
                       >
                         <FileText size={14} className="mr-1" />
-                        View & Interact
+                        Interact
                       </Button>
-                      
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          onContractSelect(contract);
+                          setSelectedContract(contract);
+                          setDialogTab('verify');
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        {verificationStatus === 'success' ? (
+                          <ShieldCheck size={14} className="mr-1" />
+                        ) : (
+                          <ShieldAlert size={14} className="mr-1" />
+                        )}
+                        Verify
+                      </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -290,7 +373,18 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
                         onClick={() => openInExplorer(contract.address)}
                       >
                         <ExternalLink size={14} className="mr-1" />
-                        Explorer
+                        BaseScan
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => copyAbi(contract.abi)}
+                        title="Copy ABI JSON"
+                      >
+                        <Code2 size={14} className="mr-1" />
+                        Copy ABI
                       </Button>
                       
                       <Button
@@ -319,7 +413,7 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
               </DialogDescription>
             </DialogHeader>
             
-            <Tabs defaultValue="interact">
+            <Tabs value={dialogTab} onValueChange={(v) => setDialogTab(v as 'interact' | 'verify' | 'abi')}>
               <TabsList className="w-full">
                 <TabsTrigger value="interact">Interact</TabsTrigger>
                 <TabsTrigger value="verify">Verify</TabsTrigger>
