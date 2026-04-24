@@ -93,7 +93,11 @@ const mapIndexerTransaction = (tx: any): Transaction => ({
   to: tx.to || "",
   value: ethers.formatEther(BigInt(tx.value || "0")),
   gasUsed: tx.gasUsed || tx.gas_used || "0",
-  timestamp: Number(tx.timeStamp || tx.timestamp || 0) * 1000,
+  timestamp: tx.timeStamp
+    ? Number(tx.timeStamp) * 1000
+    : tx.timestamp
+      ? Date.parse(tx.timestamp)
+      : 0,
   status: tx.isError === "1" || tx.status === "0" ? "failed" : "success",
 });
 
