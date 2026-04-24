@@ -39,12 +39,21 @@ import {
   hasExternalImports,
 } from "@/utils/solidityImports";
 import { BASE_MAINNET } from "@/config/base";
+import type { CompileSettings } from "@/types/blockchain";
 
 interface ContractVerificationProps {
   contractAddress: string;
   contractName: string;
   sourceCode: string;
   abi: unknown[];
+  /**
+   * Settings captured when Ricknad compiled the contract. When present,
+   * these pre-populate the verify form so the user doesn't have to
+   * re-enter them (and can't accidentally cause a bytecode mismatch).
+   */
+  compileSettings?: CompileSettings;
+  /** ABI-encoded constructor arguments captured at deploy time (no 0x prefix). */
+  constructorArguments?: string;
 }
 
 const EVM_VERSIONS = [
@@ -97,6 +106,8 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
   contractAddress,
   contractName,
   sourceCode,
+  compileSettings,
+  constructorArguments: deployedConstructorArgs,
 }) => {
   const [stored, setStored] = useState<StoredVerification | null>(() =>
     getVerificationRecord(contractAddress),
@@ -105,26 +116,54 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [liveMessage, setLiveMessage] = useState<string | null>(null);
 
-  const [compilerVersion, setCompilerVersion] = useState(() => inferCompilerVersion(sourceCode));
-  const [optimizationUsed, setOptimizationUsed] = useState(true);
-  const [optimizerRuns, setOptimizerRuns] = useState(200);
-  const [evmVersion, setEvmVersion] = useState("default");
-  const [licenseType, setLicenseType] = useState<number>(() => inferLicenseType(sourceCode));
-  const [constructorArguments, setConstructorArguments] = useState("");
-  const [ozVersion, setOzVersion] = useState(DEFAULT_OZ_VERSION);
+  const [compilerVersion, setCompilerVersion] = useState(
+    () => compileSettings?.compilerVersion ?? inferCompilerVersion(sourceCode),
+  );
+  const [optimizationUsed, setOptimizationUsed] = useState(
+    compileSettings?.optimizerEnabled ?? true,
+  );
+  const [optimizerRuns, setOptimizerRuns] = useState(compileSettings?.optimizerRuns ?? 200);
+  const [evmVersion, setEvmVersion] = useState(compileSettings?.evmVersion ?? "default");
+  const [licenseType, setLicenseType] = useState<number>(
+    () => compileSettings?.licenseType ?? inferLicenseType(sourceCode),
+  );
+  const [constructorArguments, setConstructorArguments] = useState(
+    deployedConstructorArgs ?? "",
+  );
+  const [ozVersion, setOzVersion] = useState(
+    compileSettings?.ozVersion ?? DEFAULT_OZ_VERSION,
+  );
   const [fetchedImports, setFetchedImports] = useState<string[]>([]);
 
   const requiresStandardJson = useMemo(() => hasExternalImports(sourceCode), [sourceCode]);
   const importCounts = useMemo(() => countDirectImports(sourceCode), [sourceCode]);
+  const settingsLocked = Boolean(compileSettings);
 
   useEffect(() => {
     setStored(getVerificationRecord(contractAddress));
   }, [contractAddress]);
 
   useEffect(() => {
-    setCompilerVersion(inferCompilerVersion(sourceCode));
-    setLicenseType(inferLicenseType(sourceCode));
-  }, [sourceCode]);
+    if (compileSettings) {
+      setCompilerVersion(compileSettings.compilerVersion);
+      setOptimizationUsed(compileSettings.optimizerEnabled);
+      setOptimizerRuns(compileSettings.optimizerRuns);
+      setEvmVersion(compileSettings.evmVersion ?? "default");
+      if (typeof compileSettings.licenseType === "number") {
+        setLicenseType(compileSettings.licenseType);
+      }
+      if (compileSettings.ozVersion) setOzVersion(compileSettings.ozVersion);
+    } else {
+      setCompilerVersion(inferCompilerVersion(sourceCode));
+      setLicenseType(inferLicenseType(sourceCode));
+    }
+  }, [sourceCode, compileSettings]);
+
+  useEffect(() => {
+    if (typeof deployedConstructorArgs === "string") {
+      setConstructorArguments(deployedConstructorArgs);
+    }
+  }, [deployedConstructorArgs]);
 
   const explorerUrl = useMemo(() => basescanCodeUrl(contractAddress), [contractAddress]);
 
@@ -286,6 +325,35 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
               This contract is <strong>not yet verified</strong> on BaseScan. Verification is
               confirmed only after BaseScan returns <code>Pass - Verified</code> — nothing else marks
               the contract as verified in Ricknad.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {status !== "success" && settingsLocked && (
+          <Alert className="bg-emerald-50 border-emerald-200">
+            <AlertDescription className="text-emerald-900 space-y-1">
+              <p className="font-semibold">
+                Using compile settings captured at deployment time.
+              </p>
+              <p className="text-xs">
+                Compiler: <code>{compileSettings?.compilerVersion}</code> · Optimizer:{" "}
+                {compileSettings?.optimizerEnabled
+                  ? `enabled (${compileSettings.optimizerRuns} runs)`
+                  : "disabled"}
+                {compileSettings?.evmVersion
+                  ? ` · EVM version: ${compileSettings.evmVersion}`
+                  : ""}
+                {compileSettings?.ozVersion
+                  ? ` · OpenZeppelin: ${compileSettings.ozVersion}`
+                  : ""}
+                {deployedConstructorArgs
+                  ? ` · Constructor args: ${deployedConstructorArgs.length / 2} bytes`
+                  : ""}
+              </p>
+              <p className="text-xs">
+                These match what Ricknad used to compile the bytecode actually on-chain — don't
+                change them unless you compiled the contract elsewhere.
+              </p>
             </AlertDescription>
           </Alert>
         )}

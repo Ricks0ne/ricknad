@@ -21,8 +21,11 @@ import { useWeb3 } from "@/components/web3/Web3Provider";
 import { BASE_TESTNET } from "@/config/base";
 import { deployContract, estimateDeploymentCost, formatAddress } from "@/utils/blockchain";
 import { generateContract } from "@/utils/enhancedContractGenerator";
+import { compileSolidity, DEFAULT_COMPILER_VERSION } from "@/utils/solCompiler";
+import { DEFAULT_OZ_VERSION } from "@/utils/solidityImports";
+import { ethers } from "ethers";
 import { toast } from "sonner";
-import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
+import { DeployedContract, SmartContract, ContractType, CompileSettings } from "@/types/blockchain";
 import ContractInteractionWidget from "@/components/contract/ContractInteractionWidget";
 import DeployedContractsList from "@/components/contract/DeployedContractsList";
 import ContractVerification from "@/components/contract/ContractVerification";
@@ -213,9 +216,11 @@ const ChatInterface: React.FC = () => {
     bytecode: string | null;
     deployedAddress?: string;
     deploymentTx?: string;
+    compileSettings?: CompileSettings;
   } | null>(null);
   const [selectedDeployedContract, setSelectedDeployedContract] = useState<DeployedContract | null>(null);
   const [conversationContext, setConversationContext] = useState<Message[]>([]);
+  const [constructorArgsInput, setConstructorArgsInput] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // System prompt that defines Base AI's behavior
@@ -626,140 +631,85 @@ const ChatInterface: React.FC = () => {
     setIsCompiled(false);
     setCompilationError(null);
     setDeploymentEstimate(null);
-    
+
+    const contractName = currentContract.name || extractContractName(currentContract.code);
+    const compilerVersion = DEFAULT_COMPILER_VERSION;
+    const optimizerEnabled = true;
+    const optimizerRuns = 200;
+    const ozVersion = DEFAULT_OZ_VERSION;
+
     try {
-      console.log("Starting contract compilation...");
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const hasStructs = currentContract.code.includes('struct');
-      const hasMappings = currentContract.code.includes('mapping');
-      const functionCount = (currentContract.code.match(/function\s+\w+/g) || []).length;
-      
-      // Generate ABI based on the Solidity code
-      const generatedAbi: any[] = [];
-      
-      // Add constructor
-      generatedAbi.push({
-        "inputs": [],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
+      const fetched: string[] = [];
+      const compiled = await compileSolidity({
+        sourceCode: currentContract.code,
+        contractName,
+        compilerVersion,
+        optimizerEnabled,
+        optimizerRuns,
+        ozVersion,
+        onFetchImport: (path) => {
+          fetched.push(path);
+        },
       });
-      
-      // Extract events
-      const eventMatches = [...currentContract.code.matchAll(/event\s+(\w+)\s*\(([^)]*)\)\s*;/g)];
-      for (const match of eventMatches) {
-        const eventName = match[1];
-        const eventParams = match[2].trim();
-        
-        const inputs = eventParams.split(',').filter(p => p.trim()).map((param, index) => {
-          const parts = param.trim().split(/\s+/);
-          const indexed = parts.includes('indexed');
-          const type = indexed ? parts[0] : parts[0];
-          const name = parts[parts.length - 1];
-          
-          return {
-            "indexed": indexed,
-            "internalType": type,
-            "name": name,
-            "type": type
-          };
-        });
-        
-        generatedAbi.push({
-          "anonymous": false,
-          "inputs": inputs,
-          "name": eventName,
-          "type": "event"
-        });
-      }
-      
-      // Extract functions
-      const functionMatchPattern = /function\s+(\w+)\s*\(([^)]*)\)\s*(public|private|internal|external)?\s*(view|pure|payable)?\s*(?:returns\s*\(([^)]*)\))?\s*{/g;
-      const functionMatches = [...currentContract.code.matchAll(functionMatchPattern)];
-      
-      for (const match of functionMatches) {
-        const name = match[1];
-        const params = match[2];
-        const visibility = match[3] || "public";
-        const mutability = match[4] || "nonpayable";
-        const returns = match[5];
-        
-        // Parse inputs
-        const inputs = params.split(',').filter(p => p.trim()).map(param => {
-          const parts = param.trim().split(/\s+/);
-          return {
-            "internalType": parts[0],
-            "name": parts[1] || `param${Math.floor(Math.random() * 1000)}`,
-            "type": parts[0]
-          };
-        });
-        
-        // Parse outputs
-        const outputs = returns ? returns.split(',').filter(r => r.trim()).map(ret => {
-          const parts = ret.trim().split(/\s+/);
-          return {
-            "internalType": parts[0],
-            "name": parts[1] || "",
-            "type": parts[0]
-          };
-        }) : [];
-        
-        generatedAbi.push({
-          "inputs": inputs,
-          "name": name,
-          "outputs": outputs,
-          "stateMutability": mutability === "payable" ? "payable" : mutability || "nonpayable",
-          "type": "function"
-        });
-      }
-      
-      // Sample valid bytecode
-      const validBytecodeSample = "0x608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c8063771602f714610030575b600080fd5b61004a6004803603810190610045919061009d565b610060565b60405161005791906100d9565b60405180910390f35b6000818361006e91906100f4565b905092915050565b600080fd5b6000819050919050565b61008a8161007d565b811461009557600080fd5b50565b6000813590506100a781610081565b92915050565b600080604083850312156100b4576100b3610079565b5b60006100c285828601610098565b92505060206100d385828601610098565b9150509250929050565b6100e38161007d565b82525050565b60006020820190506100fe60008301846100dc565b92915050565b7f4e487b710000000000000000000000000000000000000000000000000000000060e052604160045260246000fd5b600061013f8261007d565b915061014a8361007d565b9250827fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0382111561017f5761017e610105565b5b82820190509291505056fea264697066735822122024d33be7c73c099cedba7e11787e893151b39c977d9712cce3a0db7f94ba066764736f6c634300080d0033";
-      
-      console.log("Compilation successful, setting contract data");
-      
-      // Update current contract with compiled data
-      setCurrentContract(prevState => ({
-        ...prevState,
-        abi: generatedAbi,
-        bytecode: validBytecodeSample
-      }));
-      
-      // Set compilation status
+
+      const compileSettings: CompileSettings = {
+        compilerVersion,
+        optimizerEnabled,
+        optimizerRuns,
+        ozVersion,
+        contractPath: compiled.contractPath,
+      };
+
+      setCurrentContract((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: contractName,
+              abi: compiled.abi,
+              bytecode: compiled.bytecode,
+              compileSettings,
+            }
+          : prev,
+      );
+
       setIsCompiled(true);
-      
-      // Add a compilation success message
+
+      const summary =
+        fetched.length > 0
+          ? `\nResolved ${fetched.length} OpenZeppelin file${fetched.length === 1 ? "" : "s"} from unpkg.`
+          : "";
+
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: `✅ Contract compiled successfully. Deploy is enabled.\n\nContract Name: ${currentContract.name}\nABI: ${generatedAbi.length} entries\nBytecode: Ready`,
+        role: "assistant",
+        content: `✅ Contract compiled with solc ${compilerVersion.replace(/^v/, "")} (optimizer ${optimizerEnabled ? `on, ${optimizerRuns} runs` : "off"}).\n\nContract Name: ${contractName}\nABI: ${compiled.abi.length} entries\nBytecode: ${compiled.bytecode.length} hex chars${summary}`,
         timestamp: Date.now(),
         contractData: {
-          name: currentContract.name,
+          name: contractName,
           code: currentContract.code,
-          abi: generatedAbi,
-          bytecode: validBytecodeSample,
-          type: currentContract.type
-        }
+          abi: compiled.abi,
+          bytecode: compiled.bytecode,
+          type: currentContract.type,
+        },
       };
-      
-      setMessages(prev => [...prev, compilationMessage]);
+
+      setMessages((prev) => [...prev, compilationMessage]);
       toast.success("Contract compiled successfully!");
-    } catch (err: any) {
-      console.error('Error compiling contract:', err);
+    } catch (err: unknown) {
+      console.error("Error compiling contract:", err);
       setIsCompiled(false);
-      setCompilationError(err?.message || 'Unknown compilation error');
-      toast.error('Compilation failed');
-      
-      // Add a compilation error message
+      const message = err instanceof Error ? err.message : "Unknown compilation error";
+      setCompilationError(message);
+      toast.error("Compilation failed");
+
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "Failed to compile contract. Please check the code and try again.",
-        timestamp: Date.now()
+        role: "assistant",
+        content: `Failed to compile contract:\n\n\`\`\`\n${message}\n\`\`\``,
+        timestamp: Date.now(),
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsCompiling(false);
     }
@@ -773,13 +723,60 @@ const ChatInterface: React.FC = () => {
     }
     
     setIsDeploying(true);
-    
+
     try {
       if (!isConnected) {
         throw new Error("Please connect your wallet first.");
       }
-      
-      const estimate = await estimateDeploymentCost(currentContract.abi, currentContract.bytecode, signer);
+
+      // Resolve and encode constructor arguments so we can (a) pass them to the
+      // factory and (b) persist the exact ABI-encoded hex for later
+      // verification. BaseScan compares this byte-for-byte against the bytes
+      // appended to the creation calldata on-chain.
+      const ctorAbi = currentContract.abi.find(
+        (entry) => entry && entry.type === "constructor",
+      ) as { inputs?: Array<{ type: string; name?: string }> } | undefined;
+      const ctorInputs = ctorAbi?.inputs ?? [];
+      let constructorArgs: unknown[] = [];
+      let encodedConstructorArgs = "";
+      if (ctorInputs.length > 0) {
+        const raw = constructorArgsInput.trim();
+        if (!raw) {
+          throw new Error(
+            `This contract's constructor takes ${ctorInputs.length} argument${ctorInputs.length === 1 ? "" : "s"} (${ctorInputs.map((i) => `${i.type} ${i.name ?? ""}`.trim()).join(", ")}). Provide a JSON array in the "Constructor arguments" field before deploying.`,
+          );
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          throw new Error(
+            `Constructor arguments must be a JSON array, e.g. ["0xAbC...", "1000000000000000000"]`,
+          );
+        }
+        if (!Array.isArray(parsed)) {
+          throw new Error("Constructor arguments must be a JSON array.");
+        }
+        if (parsed.length !== ctorInputs.length) {
+          throw new Error(
+            `Expected ${ctorInputs.length} constructor argument${ctorInputs.length === 1 ? "" : "s"}, got ${parsed.length}.`,
+          );
+        }
+        constructorArgs = parsed;
+        encodedConstructorArgs = ethers.AbiCoder.defaultAbiCoder()
+          .encode(
+            ctorInputs.map((i) => i.type),
+            constructorArgs,
+          )
+          .replace(/^0x/, "");
+      }
+
+      const estimate = await estimateDeploymentCost(
+        currentContract.abi,
+        currentContract.bytecode,
+        signer,
+        constructorArgs,
+      );
       setDeploymentEstimate({
         balanceEth: estimate.balanceEth,
         estimatedCostEth: estimate.estimatedCostEth,
@@ -788,18 +785,23 @@ const ChatInterface: React.FC = () => {
       if (estimate.balance < estimate.totalCost) {
         throw new Error(`Insufficient ETH. Balance: ${estimate.balanceEth} ETH. Estimated deployment cost: ${estimate.estimatedCostEth} ETH.`);
       }
-      
+
       toast.info("Please confirm the transaction in your wallet...");
-      
-      const result = await deployContract(currentContract.abi, currentContract.bytecode, signer);
-      
+
+      const result = await deployContract(
+        currentContract.abi,
+        currentContract.bytecode,
+        signer,
+        constructorArgs,
+      );
+
       // Update current contract
       setCurrentContract(prevState => ({
         ...prevState,
         deployedAddress: result.address,
         deploymentTx: result.deploymentTx
       }));
-      
+
       // Add to deployed contracts list in local storage
       const newContract: DeployedContract = {
         name: currentContract.name,
@@ -810,7 +812,9 @@ const ChatInterface: React.FC = () => {
         timestamp: Date.now(),
         status: 'success',
         type: (currentContract.type as ContractType) || 'custom',
-        sourceCode: currentContract.code // Store source code for verification
+        sourceCode: currentContract.code,
+        compileSettings: currentContract.compileSettings,
+        constructorArguments: encodedConstructorArgs,
       };
       
       try {
@@ -1051,9 +1055,43 @@ const ChatInterface: React.FC = () => {
                               <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
                               <p className="text-sm text-red-700 font-medium">Compilation Error</p>
                             </div>
-                            <p className="text-xs text-red-600 mt-1">{compilationError}</p>
+                            <pre className="text-xs text-red-600 mt-1 whitespace-pre-wrap break-words font-mono">{compilationError}</pre>
                           </div>
                         )}
+
+                        {isCompiled && (() => {
+                          const ctorAbi = currentContract?.abi?.find(
+                            (entry) => entry && entry.type === "constructor",
+                          ) as { inputs?: Array<{ type: string; name?: string }> } | undefined;
+                          const inputs = ctorAbi?.inputs ?? [];
+                          if (inputs.length === 0) return null;
+                          const signature = inputs
+                            .map((i) => `${i.type}${i.name ? ` ${i.name}` : ""}`)
+                            .join(", ");
+                          return (
+                            <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200 text-left">
+                              <p className="text-sm text-amber-800 font-medium">
+                                Constructor arguments required
+                              </p>
+                              <p className="text-xs text-amber-700 mt-1">
+                                This contract's constructor takes {inputs.length} argument
+                                {inputs.length === 1 ? "" : "s"}:{" "}
+                                <code className="font-mono">{signature}</code>
+                              </p>
+                              <p className="text-xs text-amber-700 mt-1">
+                                Provide a JSON array of values. These will be ABI-encoded and stored
+                                with the deployment so the Verify dialog can submit them verbatim.
+                              </p>
+                              <Textarea
+                                value={constructorArgsInput}
+                                onChange={(e) => setConstructorArgsInput(e.target.value)}
+                                placeholder={`["0xAbC...", "1000000000000000000"]`}
+                                className="mt-2 font-mono text-xs"
+                                rows={2}
+                              />
+                            </div>
+                          );
+                        })()}
 
                         {deploymentEstimate && (
                           <div className="mt-3 p-3 bg-muted rounded-lg border text-left">
@@ -1156,13 +1194,18 @@ const ChatInterface: React.FC = () => {
             
             {/* Add the verification component */}
             {selectedDeployedContract.address && (
-              <ContractVerification 
+              <ContractVerification
                 contractAddress={selectedDeployedContract.address}
                 contractName={selectedDeployedContract.name}
-                sourceCode={messages.find(m => 
-                  m.contractData?.deployedAddress === selectedDeployedContract.address
-                )?.contractData?.code || ""}
+                sourceCode={
+                  selectedDeployedContract.sourceCode ||
+                  messages.find(m =>
+                    m.contractData?.deployedAddress === selectedDeployedContract.address
+                  )?.contractData?.code || ""
+                }
                 abi={selectedDeployedContract.abi}
+                compileSettings={selectedDeployedContract.compileSettings}
+                constructorArguments={selectedDeployedContract.constructorArguments}
               />
             )}
           </>

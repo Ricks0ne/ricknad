@@ -428,11 +428,13 @@ const DeployedContractsList: React.FC<DeployedContractsListProps> = ({ onContrac
               
               <TabsContent value="verify" className="mt-4">
                 {selectedContract && (
-                  <ContractVerification 
+                  <ContractVerification
                     contractAddress={selectedContract.address}
                     contractName={selectedContract.name}
                     sourceCode={deployedContracts.find(c => c.address === selectedContract.address)?.sourceCode || ""}
                     abi={selectedContract.abi}
+                    compileSettings={selectedContract.compileSettings}
+                    constructorArguments={selectedContract.constructorArguments}
                   />
                 )}
               </TabsContent>
