@@ -13,7 +13,7 @@ const BaseMetrics = () => {
   const { data: metricsData, isLoading, isError, error } = useQuery({
     queryKey: ['base-mainnet-live-metrics'],
     queryFn: fetchBaseNetworkMetrics,
-    refetchInterval: 4000,
+    refetchInterval: 1500,
     retry: 2,
   });
 
@@ -34,18 +34,28 @@ const BaseMetrics = () => {
       icon: Blocks,
     },
     {
-      title: "Gas Price",
-      value: metricsData ? `${metricsData.gasPriceGwei} Gwei` : "Loading...",
+      title: "Base Fee",
+      value: metricsData ? `${metricsData.baseFeeGwei} Gwei` : "Loading...",
       icon: TrendingUp,
     },
     {
-      title: "Block Time",
+      title: "Priority Fee",
+      value: metricsData ? `${metricsData.priorityFeeGwei} Gwei` : "Loading...",
+      icon: TrendingUp,
+    },
+    {
+      title: "Timestamp",
       value: metricsData ? new Date(metricsData.blockTimestamp).toLocaleTimeString() : "Loading...",
       icon: Clock,
     },
     {
-      title: "Tx / Block",
+      title: "Latest Tx",
       value: metricsData?.txCount.toLocaleString() || "Loading...",
+      icon: Activity,
+    },
+    {
+      title: "Pending Tx",
+      value: metricsData?.pendingTxCount.toLocaleString() || "Loading...",
       icon: Activity,
     },
     {
@@ -55,7 +65,7 @@ const BaseMetrics = () => {
     },
     {
       title: "Network",
-      value: isError ? "Disconnected" : "Connected",
+      value: isError ? "Disconnected ❌" : metricsData?.syncing ? "Syncing ⚠️" : "Connected ✅",
       icon: isError ? WifiOff : Wifi,
     },
   ];
