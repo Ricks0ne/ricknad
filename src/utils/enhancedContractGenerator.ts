@@ -963,11 +963,22 @@ contract ${name}Implementation is Initializable, OwnableUpgradeable, UUPSUpgrade
 // Helper function to parse common contract parameters from user input
 function parseContractParameters(input: string): Record<string, any> {
   const params: Record<string, any> = {};
+  const toContractName = (value: string) => {
+    const cleaned = value
+      .replace(/\b(called|named|with|symbol|supply|cap|token|contract)\b/gi, ' ')
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 3)
+      .map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join('');
+    return cleaned || 'BaseContract';
+  };
   
   // Extract token name
   const nameMatch = input.match(/(?:called|named|name[: ]+|token[: ]+|named[: ]+|for ?a ?token ?(?:called|named) )["']?([a-zA-Z0-9 ]+)["']?/i);
   if (nameMatch && nameMatch[1]) {
-    params.name = nameMatch[1].trim();
+    params.name = toContractName(nameMatch[1]);
   }
 
   // Extract token symbol
@@ -987,7 +998,7 @@ function parseContractParameters(input: string): Record<string, any> {
 
   // Extract staking parameters
   if (input.includes('staking') || input.includes('stake')) {
-    const periodMatch = input.match(/(?:period|duration|lock)[: ]+["']?([0-9,.]+)[ ]?(days?|weeks?|months?)["']?/i);
+    const periodMatch = input.match(/(?:period|duration|lock)?\s*["']?([0-9,.]+)[ ]?(days?|weeks?|months?)["']?\s*(?:lock|period|duration)?/i);
     if (periodMatch && periodMatch[1]) {
       let period = parseInt(periodMatch[1].replace(/,/g, ''));
       if (periodMatch[2].startsWith('week')) period *= 7;
@@ -1024,7 +1035,9 @@ function determineContractType(input: string, existingContext: ContractContext):
   input = input.toLowerCase();
   
   // Contract type detection based on keywords in prompt
-  if (input.includes('erc721') || input.includes('nft') || input.includes('collectible')) {
+  if (input.includes('stake') || input.includes('staking')) {
+    return 'staking';
+  } else if (input.includes('erc721') || input.includes('nft') || input.includes('collectible')) {
     return 'erc721';
   } else if (input.includes('erc1155') || input.includes('multi-token')) {
     return 'erc1155';
@@ -1034,8 +1047,6 @@ function determineContractType(input: string, existingContext: ContractContext):
       return 'erc20Upgradeable';
     }
     return 'erc20';
-  } else if (input.includes('stake') || input.includes('staking')) {
-    return 'staking';
   } else if (input.includes('dao') || input.includes('governance') || input.includes('proposal') || input.includes('vote')) {
     return 'dao';
   } else if (input.includes('timelock')) {
@@ -1111,7 +1122,7 @@ export function enhancedGenerateContract(userPrompt: string): {
   
   // If no symbol for token contracts, create one from the name
   if ((contractType.includes('erc20') || contractType.includes('erc721')) && !params.symbol) {
-    params.symbol = params.name.replace(/[^A-Z]/gi, '').substring(0, 5).toUpperCase();
+    params.symbol = params.name.replace(/[^A-Z]/gi, '').substring(0, 4).toUpperCase();
   }
   
   // Generate contract code based on the determined type
