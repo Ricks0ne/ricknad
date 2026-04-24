@@ -551,6 +551,7 @@ const ChatInterface: React.FC = () => {
     setIsCompiling(true);
     setIsCompiled(false);
     setCompilationError(null);
+    setDeploymentEstimate(null);
     
     try {
       console.log("Starting contract compilation...");
@@ -977,6 +978,14 @@ const ChatInterface: React.FC = () => {
                               <p className="text-sm text-red-700 font-medium">Compilation Error</p>
                             </div>
                             <p className="text-xs text-red-600 mt-1">{compilationError}</p>
+                          </div>
+                        )}
+
+                        {deploymentEstimate && (
+                          <div className="mt-3 p-3 bg-muted rounded-lg border text-left">
+                            <p className="text-sm font-medium">Deployment Preflight</p>
+                            <p className="text-xs mt-1">User balance: {deploymentEstimate.balanceEth} ETH</p>
+                            <p className="text-xs mt-1">Estimated deployment cost: {deploymentEstimate.estimatedCostEth} ETH</p>
                           </div>
                         )}
                         
