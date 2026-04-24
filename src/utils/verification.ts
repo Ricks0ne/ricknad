@@ -22,6 +22,11 @@ import {
   type SubmitVerificationInput,
   type VerificationResult,
 } from "./basescanVerification";
+import {
+  buildStandardJsonInput,
+  hasExternalImports,
+  DEFAULT_OZ_VERSION,
+} from "./solidityImports";
 
 export type VerificationStatus = "unverified" | "pending" | "success" | "failure";
 
@@ -92,8 +97,18 @@ export interface VerifyOptions {
   licenseType?: number;
   /** Hex string, with or without 0x prefix. */
   constructorArguments?: string;
+  /**
+   * OpenZeppelin `@openzeppelin/contracts` package version used when
+   * compiling. Only relevant if the source imports `@openzeppelin/...`.
+   * Defaults to `DEFAULT_OZ_VERSION`.
+   */
+  ozVersion?: string;
+  /** OpenZeppelin upgradeable package version; defaults to `ozVersion`. */
+  ozUpgradeableVersion?: string;
   /** Called with every poll update so UIs can render the live BaseScan message. */
   onPoll?: (result: PollResult) => void;
+  /** Called each time an external import file is fetched, for progress UI. */
+  onFetchImport?: (path: string) => void;
 }
 
 export interface VerifyOutcome {
@@ -115,18 +130,55 @@ export const verifyContractOnBaseScan = async (
   opts: VerifyOptions,
 ): Promise<VerifyOutcome> => {
   const explorerUrl = basescanCodeUrl(opts.contractAddress);
+  const optimizationUsed = opts.optimizationUsed ?? true;
+  const optimizerRuns = opts.optimizerRuns ?? 200;
+  const evmVersion = opts.evmVersion;
 
   const payload: SubmitVerificationInput = {
     contractAddress: opts.contractAddress,
     contractName: opts.contractName,
     sourceCode: opts.sourceCode,
     compilerVersion: opts.compilerVersion ?? inferCompilerVersion(opts.sourceCode),
-    optimizationUsed: opts.optimizationUsed ?? true,
-    optimizerRuns: opts.optimizerRuns ?? 200,
-    evmVersion: opts.evmVersion,
+    optimizationUsed,
+    optimizerRuns,
+    evmVersion,
     licenseType: opts.licenseType,
     constructorArguments: opts.constructorArguments,
   };
+
+  // Detect bare-package imports (`@openzeppelin/...`). BaseScan can't
+  // resolve those as single-file; fetch the dependency graph from unpkg
+  // and submit as solidity-standard-json-input instead.
+  if (hasExternalImports(opts.sourceCode)) {
+    const mainPath = `contracts/${opts.contractName}.sol`;
+    saveVerificationStatus(opts.contractAddress, "pending", {
+      lastMessage: "Resolving imports…",
+    });
+    toast.info("Detected @-imports — fetching dependency graph…");
+    try {
+      const standardJson = await buildStandardJsonInput({
+        mainPath,
+        mainSource: opts.sourceCode,
+        optimizationUsed,
+        optimizerRuns,
+        evmVersion,
+        ozVersion: opts.ozVersion ?? DEFAULT_OZ_VERSION,
+        ozUpgradeableVersion: opts.ozUpgradeableVersion,
+        onFetch: opts.onFetchImport,
+      });
+      payload.sourceCode = JSON.stringify(standardJson);
+      payload.codeFormat = "solidity-standard-json-input";
+      payload.contractName = `${mainPath}:${opts.contractName}`;
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? `Failed to resolve imports: ${err.message}`
+          : "Failed to resolve imports.";
+      saveVerificationStatus(opts.contractAddress, "failure", { lastMessage: message });
+      toast.error(message);
+      return { status: "failure", message, explorerUrl };
+    }
+  }
 
   saveVerificationStatus(opts.contractAddress, "pending");
   toast.info("Submitting source to BaseScan…");
