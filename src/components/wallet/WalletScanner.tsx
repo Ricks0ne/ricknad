@@ -285,7 +285,7 @@ const WalletScanner: React.FC<WalletScannerProps> = ({ initialAddress = "" }) =>
               <CardDescription>
                 {showEmptyState
                   ? "No transactions found for this wallet on Base Mainnet."
-                  : `Showing ${Math.min(TX_PREVIEW_LIMIT, analytics.transactions.length)} of ${analytics.totalTransactions.toLocaleString()} transactions (auto-refresh every 15s)`}
+                  : `Showing ${Math.min(TX_PREVIEW_LIMIT, analytics.transactions.length)} of ${analytics.totalTransactions.toLocaleString()} transactions · source: ${analytics.source === "etherscan-v2" ? "BaseScan (Etherscan V2)" : "Blockscout"} · auto-refresh every 15s`}
               </CardDescription>
             </div>
             <Clock className="h-5 w-5 text-muted-foreground" />

@@ -3,8 +3,15 @@ import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
 import { Transaction } from "../types/blockchain";
 
-const BASESCAN_API_URL = "https://api.basescan.org/api";
+// BaseScan is now served via the Etherscan V2 multichain endpoint.
+// https://docs.etherscan.io/etherscan-v2/getting-started/v2-quickstart
+const ETHERSCAN_V2_API_URL = "https://api.etherscan.io/v2/api";
+const BASE_CHAIN_ID = "8453";
+// Blockscout exposes an Etherscan-compatible API with no key required;
+// used as an automatic fallback when the user's Etherscan V2 key does
+// not cover Base Mainnet (free tier) or we get rate-limited.
 const BLOCKSCOUT_API_URL = "https://base.blockscout.com/api";
+const BASESCAN_API_URL = ETHERSCAN_V2_API_URL; // legacy alias for existing callers
 
 export interface BaseNetworkMetrics {
   blockNumber: number;
@@ -140,6 +147,7 @@ export interface WalletAnalytics {
   lastActivityTimestamp: number | null;
   walletAgeMs: number | null;
   transactions: Transaction[];
+  source: "etherscan-v2" | "blockscout";
 }
 
 const BASESCAN_MAX_OFFSET = 10000;
@@ -158,9 +166,10 @@ interface RawBaseScanTx {
   input?: string;
 }
 
-const buildBaseScanTxListUrl = (address: string, params: Record<string, string>): string => {
+const buildEtherscanV2TxListUrl = (address: string, params: Record<string, string>): string => {
   const key = import.meta.env.VITE_BASESCAN_API_KEY;
   const search = new URLSearchParams({
+    chainid: BASE_CHAIN_ID,
     module: "account",
     action: "txlist",
     address,
@@ -169,7 +178,19 @@ const buildBaseScanTxListUrl = (address: string, params: Record<string, string>)
     ...params,
   });
   if (key) search.set("apikey", key);
-  return `${BASESCAN_API_URL}?${search.toString()}`;
+  return `${ETHERSCAN_V2_API_URL}?${search.toString()}`;
+};
+
+const buildBlockscoutTxListUrl = (address: string, params: Record<string, string>): string => {
+  const search = new URLSearchParams({
+    module: "account",
+    action: "txlist",
+    address,
+    startblock: "0",
+    endblock: "99999999",
+    ...params,
+  });
+  return `${BLOCKSCOUT_API_URL}?${search.toString()}`;
 };
 
 const isRateLimitMessage = (message: string): boolean => {
@@ -181,50 +202,110 @@ const isRateLimitMessage = (message: string): boolean => {
   );
 };
 
-// Fetch the complete sorted-ASC transaction history from BaseScan.
+const isPlanLimitMessage = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  // Returned when the Etherscan V2 key's plan doesn't cover the requested chain
+  // (the default for free-tier keys on Base Mainnet).
+  return lower.includes("free api access is not supported") || lower.includes("upgrade your api plan");
+};
+
+const isDeprecatedEndpointMessage = (message: string): boolean => {
+  return message.toLowerCase().includes("deprecated v1 endpoint");
+};
+
+export class PlanNotCoveredError extends Error {
+  constructor(message = "Your Etherscan/BaseScan API key plan does not cover Base Mainnet (chainid 8453). Falling back to Blockscout.") {
+    super(message);
+    this.name = "PlanNotCoveredError";
+  }
+}
+
+const fetchTxListPage = async (url: string): Promise<RawBaseScanTx[] | "empty"> => {
+  const response = await fetch(url);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Transaction indexer responded with ${response.status}: ${response.statusText}`);
+  }
+
+  // Etherscan-compatible API: status "0" is an error or "no results" signal.
+  if (data.status === "0") {
+    const msg: string = typeof data.message === "string" ? data.message : "";
+    const resultMsg: string = typeof data.result === "string" ? data.result : "";
+    const combined = `${msg} ${resultMsg}`.trim();
+    if (msg.toLowerCase().includes("no transactions found")) return "empty";
+    if (isRateLimitMessage(combined)) throw new RateLimitError();
+    if (isPlanLimitMessage(combined) || isDeprecatedEndpointMessage(combined)) {
+      throw new PlanNotCoveredError(resultMsg || msg);
+    }
+    throw new Error(resultMsg || msg || "Transaction indexer request failed.");
+  }
+
+  return Array.isArray(data.result) ? (data.result as RawBaseScanTx[]) : [];
+};
+
+export interface TxListFetchMeta {
+  source: "etherscan-v2" | "blockscout";
+  fallbackReason?: string;
+}
+
+export interface TxListFetchResult {
+  transactions: RawBaseScanTx[];
+  meta: TxListFetchMeta;
+}
+
+// Fetch the complete sorted-ASC transaction history for a Base Mainnet address.
+// Primary source: Etherscan V2 multichain API (`chainid=8453`). This requires
+// an API key on a plan that covers Base Mainnet.
+// Fallback: Blockscout's Etherscan-compatible API, which is free and keyless
+// but slower/less structured. We fall back automatically on plan-limit and
+// deprecated-endpoint errors so free-tier keys still yield usable analytics.
 // Paginates in chunks of BASESCAN_MAX_OFFSET so we get the true total count
 // and the accurate first-activity timestamp.
-export const fetchBaseScanTxList = async (address: string): Promise<RawBaseScanTx[]> => {
+export const fetchBaseScanTxList = async (address: string): Promise<TxListFetchResult> => {
   if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
 
-  const all: RawBaseScanTx[] = [];
-  let page = 1;
   // Cap pages to avoid runaway fetches for ultra-active addresses.
   const MAX_PAGES = 10;
 
-  while (page <= MAX_PAGES) {
-    const url = buildBaseScanTxListUrl(address, {
-      sort: "asc",
-      page: String(page),
-      offset: String(BASESCAN_MAX_OFFSET),
-    });
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(`BaseScan responded with ${response.status}: ${response.statusText}`);
+  const runPaginated = async (
+    buildUrl: (params: Record<string, string>) => string,
+  ): Promise<RawBaseScanTx[]> => {
+    const all: RawBaseScanTx[] = [];
+    for (let page = 1; page <= MAX_PAGES; page += 1) {
+      const url = buildUrl({
+        sort: "asc",
+        page: String(page),
+        offset: String(BASESCAN_MAX_OFFSET),
+      });
+      const batch = await fetchTxListPage(url);
+      if (batch === "empty") break;
+      all.push(...batch);
+      if (batch.length < BASESCAN_MAX_OFFSET) break;
     }
+    return all;
+  };
 
-    // Etherscan-compatible API: status "0" with message "No transactions found" is success+empty.
-    if (data.status === "0") {
-      const msg: string = typeof data.message === "string" ? data.message : "";
-      const resultMsg: string = typeof data.result === "string" ? data.result : "";
-      if (msg.toLowerCase().includes("no transactions found")) break;
-      if (isRateLimitMessage(msg) || isRateLimitMessage(resultMsg)) {
-        throw new RateLimitError();
-      }
-      throw new Error(resultMsg || msg || "BaseScan request failed.");
+  try {
+    const transactions = await runPaginated((params) =>
+      buildEtherscanV2TxListUrl(address, params),
+    );
+    return { transactions, meta: { source: "etherscan-v2" } };
+  } catch (err) {
+    if (err instanceof PlanNotCoveredError) {
+      console.warn(
+        "Etherscan V2 refused Base Mainnet for this key (free-tier / deprecated). Falling back to Blockscout.",
+      );
+      const transactions = await runPaginated((params) =>
+        buildBlockscoutTxListUrl(address, params),
+      );
+      return {
+        transactions,
+        meta: { source: "blockscout", fallbackReason: err.message },
+      };
     }
-
-    const batch: RawBaseScanTx[] = Array.isArray(data.result) ? data.result : [];
-    all.push(...batch);
-
-    if (batch.length < BASESCAN_MAX_OFFSET) break;
-    page += 1;
+    throw err;
   }
-
-  return all;
 };
 
 const mapBaseScanTx = (tx: RawBaseScanTx): Transaction => ({
@@ -247,11 +328,12 @@ const mapBaseScanTx = (tx: RawBaseScanTx): Transaction => ({
 export const scanWalletAnalytics = async (address: string): Promise<WalletAnalytics> => {
   if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
 
-  const [balanceEth, rawTxs] = await Promise.all([
+  const [balanceEth, txListResult] = await Promise.all([
     getWalletBalance(address),
     fetchBaseScanTxList(address),
   ]);
 
+  const rawTxs = txListResult.transactions;
   const transactions = rawTxs.map(mapBaseScanTx);
   const first = rawTxs[0];
   const last = rawTxs[rawTxs.length - 1];
@@ -273,6 +355,7 @@ export const scanWalletAnalytics = async (address: string): Promise<WalletAnalyt
     lastActivityTimestamp: last?.timeStamp ? Number(last.timeStamp) * 1000 : null,
     walletAgeMs: first?.timeStamp ? Date.now() - Number(first.timeStamp) * 1000 : null,
     transactions,
+    source: txListResult.meta.source,
   };
 };
 
@@ -281,7 +364,7 @@ export const getWalletTransactions = async (address: string, limit = 5): Promise
   try {
     if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
 
-    const params = new URLSearchParams({
+    const baseParams: Record<string, string> = {
       module: "account",
       action: "txlist",
       address,
@@ -290,13 +373,17 @@ export const getWalletTransactions = async (address: string, limit = 5): Promise
       page: "1",
       offset: String(limit),
       sort: "desc",
-    });
+    };
 
+    const v2Params = new URLSearchParams({ chainid: BASE_CHAIN_ID, ...baseParams });
     const basescanKey = import.meta.env.VITE_BASESCAN_API_KEY;
+    if (basescanKey) v2Params.set("apikey", basescanKey);
+    const blockscoutParams = new URLSearchParams(baseParams);
+
     const indexerUrls = [
-      basescanKey ? `${BASESCAN_API_URL}?${params.toString()}&apikey=${basescanKey}` : null,
-      `${BLOCKSCOUT_API_URL}?${params.toString()}`,
-    ].filter(Boolean) as string[];
+      `${ETHERSCAN_V2_API_URL}?${v2Params.toString()}`,
+      `${BLOCKSCOUT_API_URL}?${blockscoutParams.toString()}`,
+    ];
 
     for (const url of indexerUrls) {
       const response = await fetch(url);
