@@ -653,7 +653,7 @@ const ChatInterface: React.FC = () => {
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "Contract compiled successfully! You can now deploy it to the Base Mainnet.",
+        content: `✅ Contract compiled successfully. Deploy is enabled.\n\nContract Name: ${currentContract.name}\nABI: ${generatedAbi.length} entries\nBytecode: Ready`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -744,7 +744,7 @@ const ChatInterface: React.FC = () => {
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Contract deployed successfully to the Base Mainnet at address ${result.address}`,
+        content: `✅ Contract deployed to Base Mainnet.\n\nContract Address: ${result.address}\nTx Hash: ${result.deploymentTx}\nExplorer Link: ${BASE_TESTNET.blockExplorerUrl}/address/${result.address}\nABI:\n${JSON.stringify(currentContract.abi, null, 2)}`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
