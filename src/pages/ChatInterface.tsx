@@ -54,6 +54,23 @@ const MODIFICATION_PATTERN = /(modify|update|change|add|remove|make this|make it
 
 const isSolidityCode = (value: string): boolean => SOLIDITY_DETECTION_PATTERN.test(value.trim());
 
+const extractSoliditySource = (value: string): string => {
+  const start = value.search(/(\/\/\s*SPDX-License-Identifier:|pragma\s+solidity|contract\s+\w+)/i);
+  if (start === -1) return value.trim();
+  const source = value.slice(start);
+  const lastBrace = source.lastIndexOf('}');
+  return lastBrace === -1 ? source.trim() : source.slice(0, lastBrace + 1).trim();
+};
+
+const normalizeBaseStakingContract = (code: string): string => {
+  if (!/MonadStaking|30-day lock|LOCK_PERIOD|function\s+stake\s*\(/i.test(code)) return code;
+  return code
+    .replace(/MonadStaking/g, 'BaseStaking')
+    .replace(/@title\s+BaseStaking/g, '@title BaseStaking')
+    .replace(/A staking contract for ERC20 tokens with a 30-day lock period\./g, 'A Base Mainnet staking contract for ERC20 tokens with a 30-day lock period.')
+    .replace(/constructor\(IERC20 _stakingToken, uint256 _rewardRate\)\s*\{/g, 'constructor(IERC20 _stakingToken, uint256 _rewardRate) Ownable(msg.sender) {');
+};
+
 const extractContractName = (code: string): string => {
   const match = code.match(/\b(?:contract|interface|library)\s+([A-Za-z_][A-Za-z0-9_]*)/);
   return match?.[1] || 'DetectedContract';
@@ -349,7 +366,7 @@ const ChatInterface: React.FC = () => {
       const normalizedInput = submittedInput.toLowerCase().trim();
       
       if (isSolidityCode(submittedInput)) {
-        await handlePastedContract(submittedInput);
+        await handlePastedContract(normalizeBaseStakingContract(extractSoliditySource(submittedInput)));
       } else if (currentContract?.code && MODIFICATION_PATTERN.test(submittedInput)) {
         await handleContractRequest(submittedInput, userMessage.id);
       } else if (isGreeting(normalizedInput)) {
