@@ -147,7 +147,7 @@ const applyContractModification = (code: string, instruction: string): string =>
 };
 
 const ChatInterface: React.FC = () => {
-  const { account, signer, isConnected, connectWallet } = useWeb3();
+  const { signer, isConnected, connectWallet } = useWeb3();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
