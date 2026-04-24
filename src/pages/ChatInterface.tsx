@@ -325,11 +325,12 @@ const ChatInterface: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
+    const submittedInput = inputValue.trim();
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputValue,
+      content: submittedInput,
       timestamp: Date.now()
     };
     
@@ -341,10 +342,13 @@ const ChatInterface: React.FC = () => {
     setConversationContext(prev => [...prev, userMessage]);
     
     try {
-      const normalizedInput = inputValue.toLowerCase().trim();
+      const normalizedInput = submittedInput.toLowerCase().trim();
       
-      // Check if the message is a greeting
-      if (isGreeting(normalizedInput)) {
+      if (isSolidityCode(submittedInput)) {
+        await handlePastedContract(submittedInput);
+      } else if (currentContract?.code && MODIFICATION_PATTERN.test(submittedInput)) {
+        await handleContractRequest(submittedInput, userMessage.id);
+      } else if (isGreeting(normalizedInput)) {
         await handleGreeting();
       }
       // Check if the message is asking for an explanation or a contract
@@ -365,6 +369,40 @@ const ChatInterface: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handlePastedContract = async (code: string) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const name = extractContractName(code);
+    const solidityVersion = extractSolidityVersion(code);
+    const features = detectContractFeatures(code);
+    const validationIssue = validateSolidityCode(code);
+
+    setIsCompiled(false);
+    setCompilationError(validationIssue);
+    setCurrentContract({
+      name,
+      code,
+      type: features[0] || 'custom',
+      abi: null,
+      bytecode: null,
+    });
+
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: `${validationIssue ? `⚠️ ${validationIssue}\n\n` : '✅ Contract detected. Ready to compile.\n\n'}Contract Name: ${name}\nSolidity Version: ${solidityVersion}\nDetected Features: ${features.join(', ')}`,
+      timestamp: Date.now(),
+      contractData: {
+        code,
+        name,
+        type: features[0] || 'custom',
+      }
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+    setConversationContext(prev => [...prev, assistantMessage]);
   };
 
   // Handle greeting messages
