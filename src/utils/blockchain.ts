@@ -3,6 +3,18 @@ import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
 import { Transaction } from "../types/blockchain";
 
+const BASESCAN_API_URL = "https://api.basescan.org/api";
+const BLOCKSCOUT_API_URL = "https://base.blockscout.com/api";
+
+export interface BaseNetworkMetrics {
+  blockNumber: number;
+  gasPriceWei: bigint;
+  gasPriceGwei: string;
+  blockTimestamp: number;
+  txCount: number;
+  connected: boolean;
+}
+
 export interface DeploymentCostEstimate {
   chainId: bigint;
   balance: bigint;
@@ -14,7 +26,7 @@ export interface DeploymentCostEstimate {
   gasPriceGwei: string;
 }
 
-// Initialize a provider for the Base testnet
+// Initialize a provider for Base Mainnet
 export const getProvider = () => {
   try {
     return new ethers.JsonRpcProvider(BASE_TESTNET.rpcUrl);
@@ -24,87 +36,107 @@ export const getProvider = () => {
   }
 };
 
+export const isValidWalletAddress = (address: string) => ethers.isAddress(address);
+
+export const assertBaseMainnet = async (provider = getProvider()) => {
+  const network = await provider.getNetwork();
+  console.log("Base RPC chainId:", network.chainId.toString());
+  if (network.chainId !== BigInt(BASE_TESTNET.chainId)) {
+    throw new Error(`RPC is not connected to Base Mainnet. Expected chainId ${BASE_TESTNET.chainId}, got ${network.chainId.toString()}.`);
+  }
+  return network;
+};
+
+export const fetchBaseNetworkMetrics = async (): Promise<BaseNetworkMetrics> => {
+  const provider = getProvider();
+  await assertBaseMainnet(provider);
+
+  const [blockHex, gasPriceHex] = await Promise.all([
+    provider.send("eth_blockNumber", []),
+    provider.send("eth_gasPrice", []),
+  ]);
+
+  const blockNumber = Number(BigInt(blockHex));
+  const gasPriceWei = BigInt(gasPriceHex);
+  const block = await provider.getBlock(blockNumber);
+
+  if (!block) throw new Error("Unable to fetch latest Base block from RPC.");
+
+  return {
+    blockNumber,
+    gasPriceWei,
+    gasPriceGwei: Number(ethers.formatUnits(gasPriceWei, "gwei")).toFixed(4),
+    blockTimestamp: block.timestamp * 1000,
+    txCount: block.transactions.length,
+    connected: true,
+  };
+};
+
 // Get wallet balance
 export const getWalletBalance = async (address: string) => {
   try {
+    if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
     const provider = getProvider();
+    await assertBaseMainnet(provider);
     const balance = await provider.getBalance(address);
+    console.log("Base wallet balance:", ethers.formatEther(balance));
     return ethers.formatEther(balance);
   } catch (error) {
     console.error("Failed to get wallet balance:", error);
-    return "0";
+    throw error;
   }
 };
 
-// Get wallet transaction history - optimized for real-time recent transactions
+const mapIndexerTransaction = (tx: any): Transaction => ({
+  hash: tx.hash,
+  from: tx.from,
+  to: tx.to || "",
+  value: ethers.formatEther(BigInt(tx.value || "0")),
+  gasUsed: tx.gasUsed || tx.gas_used || "0",
+  timestamp: tx.timeStamp
+    ? Number(tx.timeStamp) * 1000
+    : tx.timestamp
+      ? Date.parse(tx.timestamp)
+      : 0,
+  status: tx.isError === "1" || tx.status === "0" ? "failed" : "success",
+});
+
+// Get wallet transaction history from an indexed source; Base RPC does not expose account history.
 export const getWalletTransactions = async (address: string, limit = 5): Promise<Transaction[]> => {
   try {
-    const provider = getProvider();
-    const blockNumber = await provider.getBlockNumber();
-    console.log("Current block number:", blockNumber);
-    
-    // Get recent blocks
-    const transactions: Transaction[] = [];
-    const blocksToSearch = 100; // Increased to find more transactions
-    
-    // Normalize the search address
-    const normalizedSearchAddress = address.toLowerCase();
-    
-    for (let i = 0; i < blocksToSearch && blockNumber - i >= 0; i++) {
-      if (transactions.length >= limit) break; // Stop once we have enough transactions
-      
-      console.log(`Fetching block ${blockNumber - i}`);
-      const block = await provider.getBlock(blockNumber - i);
-      
-      if (block && block.transactions) {
-        console.log(`Block ${blockNumber - i} has ${block.transactions.length} transactions`);
-        
-        // Process each transaction in the block
-        for (const txHash of block.transactions) {
-          if (transactions.length >= limit) break; // Stop once we have enough transactions
-          
-          try {
-            const tx = await provider.getTransaction(txHash);
-            if (!tx) continue;
-            
-            // Check if the transaction involves our address (normalized comparison)
-            if (tx.from?.toLowerCase() === normalizedSearchAddress || 
-                (tx.to && tx.to.toLowerCase() === normalizedSearchAddress)) {
-              
-              // Get transaction receipt for status
-              const receipt = await provider.getTransactionReceipt(txHash);
-              const status = receipt ? (receipt.status ? 'success' : 'failed') : 'pending';
-              
-              // Get the timestamp from the block
-              const txBlock = tx.blockNumber ? await provider.getBlock(tx.blockNumber) : null;
-              const timestamp = txBlock ? txBlock.timestamp * 1000 : Date.now();
-              
-              // Add to our transactions array
-              transactions.push({
-                hash: tx.hash,
-                from: tx.from,
-                to: tx.to || '',
-                value: ethers.formatEther(tx.value),
-                timestamp: timestamp,
-                status: status
-              });
-            }
-          } catch (txError) {
-            console.error(`Error processing transaction ${txHash}:`, txError);
-            continue; // Skip to next transaction if there's an error with this one
-          }
-        }
+    if (!isValidWalletAddress(address)) throw new Error("Invalid wallet address.");
+
+    const params = new URLSearchParams({
+      module: "account",
+      action: "txlist",
+      address,
+      startblock: "0",
+      endblock: "99999999",
+      page: "1",
+      offset: String(limit),
+      sort: "desc",
+    });
+
+    const basescanKey = import.meta.env.VITE_BASESCAN_API_KEY;
+    const indexerUrls = [
+      basescanKey ? `${BASESCAN_API_URL}?${params.toString()}&apikey=${basescanKey}` : null,
+      `${BLOCKSCOUT_API_URL}?${params.toString()}`,
+    ].filter(Boolean) as string[];
+
+    for (const url of indexerUrls) {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (response.ok && Array.isArray(data.result)) {
+        console.log(`Fetched ${data.result.length} indexed Base transactions for ${address}`);
+        return data.result.map(mapIndexerTransaction).slice(0, limit);
       }
+      console.warn("Base transaction indexer response:", data?.message || data?.status || response.statusText);
     }
-    
-    // Sort transactions by timestamp, newest first
-    transactions.sort((a, b) => b.timestamp - a.timestamp);
-    
-    console.log(`Found ${transactions.length} transactions for ${address}`);
-    return transactions.slice(0, limit); // Ensure we only return the requested limit
+
+    throw new Error("Unable to fetch Base transaction history from the configured indexers.");
   } catch (error) {
     console.error("Failed to get wallet transactions:", error);
-    return [];
+    throw error;
   }
 };
 
