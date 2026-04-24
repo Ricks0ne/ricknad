@@ -470,43 +470,33 @@ const ChatInterface: React.FC = () => {
                          message.toLowerCase().includes('modify') ||
                          message.toLowerCase().includes('change');
     
-    // If current contract exists and this is a modification request, use that context
     if (isModification && currentContract?.code) {
-      // Generate a response acknowledging the modification request
-      const modificationRequestMessage: Message = {
+      const updatedCode = applyContractModification(currentContract.code, message);
+      const updatedName = extractContractName(updatedCode) || currentContract.name;
+      const updatedFeatures = detectContractFeatures(updatedCode);
+      const modificationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `I'll modify the current ${currentContract.type} contract to implement your request. Generating updated code...`,
-        timestamp: Date.now()
+        content: `Updated existing contract.\n\nContract Name: ${updatedName}\nSolidity Version: ${extractSolidityVersion(updatedCode)}\nDetected Features: ${updatedFeatures.join(', ')}`,
+        timestamp: Date.now(),
+        contractData: {
+          code: updatedCode,
+          name: updatedName,
+          type: currentContract.type || updatedFeatures[0] || 'custom'
+        }
       };
       
-      setMessages(prev => [...prev, modificationRequestMessage]);
-      // Add assistant message to conversation context
-      setConversationContext(prev => [...prev, modificationRequestMessage]);
-    }
-    
-    // Check if this is a generic contract request or a specific one
-    const isGenericRequest = 
-      message.includes('contract') && 
-      !message.includes('name') && 
-      !message.includes('symbol') &&
-      !message.includes('called') &&
-      !message.includes('create') &&
-      !message.includes('generate') &&
-      !message.includes('build');
-    
-    if (isGenericRequest) {
-      // Ask for more details before generating
-      const detailRequestMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: "I'd be happy to create a smart contract for you. Could you provide some specific details like the token name, symbol, or functionality you need? For example, do you want an ERC20 token, NFT collection, staking mechanism, or something else?",
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, detailRequestMessage]);
-      // Add assistant message to conversation context
-      setConversationContext(prev => [...prev, detailRequestMessage]);
+      setMessages(prev => [...prev, modificationMessage]);
+      setConversationContext(prev => [...prev, modificationMessage]);
+      setIsCompiled(false);
+      setCompilationError(null);
+      setCurrentContract({
+        name: updatedName,
+        code: updatedCode,
+        type: currentContract.type || updatedFeatures[0] || 'custom',
+        abi: null,
+        bytecode: null
+      });
       return;
     }
     
@@ -522,7 +512,7 @@ const ChatInterface: React.FC = () => {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Mainnet.`,
+      content: `Generated ${contractResult.type} contract.\n\nContract Name: ${contractResult.name}\nSolidity Version: ${extractSolidityVersion(contractResult.code)}\nDetected Features: ${detectContractFeatures(contractResult.code).join(', ')}`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
