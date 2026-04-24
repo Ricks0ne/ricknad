@@ -49,6 +49,103 @@ interface Message {
   };
 }
 
+const SOLIDITY_DETECTION_PATTERN = /(pragma\s+solidity|contract\s+\w+|\/\/\s*SPDX-License-Identifier:)/i;
+const MODIFICATION_PATTERN = /(modify|update|change|add|remove|make this|make it|upgradeable|upgradable|staking|burn|mint|pause|royalt|soulbound)/i;
+
+const isSolidityCode = (value: string): boolean => SOLIDITY_DETECTION_PATTERN.test(value.trim());
+
+const extractContractName = (code: string): string => {
+  const match = code.match(/\b(?:contract|interface|library)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  return match?.[1] || 'DetectedContract';
+};
+
+const extractSolidityVersion = (code: string): string => {
+  const match = code.match(/pragma\s+solidity\s+([^;]+);/i);
+  return match?.[1]?.trim() || 'Not specified';
+};
+
+const detectContractFeatures = (code: string): string[] => {
+  const features = new Set<string>();
+  const checks: Array<[string, RegExp]> = [
+    ['ERC20', /ERC20|IERC20|token\/ERC20/i],
+    ['ERC721 NFT', /ERC721|IERC721|token\/ERC721/i],
+    ['ERC1155 Multi-token', /ERC1155|IERC1155|token\/ERC1155/i],
+    ['Ownable', /Ownable|onlyOwner/i],
+    ['Access Control', /AccessControl|\bRole\b|hasRole/i],
+    ['Mint', /\bmint\b|_mint/i],
+    ['Burn', /\bburn\b|_burn|Burnable/i],
+    ['Pausable', /Pausable|whenNotPaused|_pause/i],
+    ['Upgradeable', /Upgradeable|Initializable|UUPS|TransparentUpgradeableProxy/i],
+    ['Staking', /stake|staking|reward/i],
+    ['Vesting', /vesting|releaseTime|cliff/i],
+  ];
+
+  checks.forEach(([label, pattern]) => {
+    if (pattern.test(code)) features.add(label);
+  });
+
+  return features.size ? Array.from(features) : ['Custom Solidity'];
+};
+
+const validateSolidityCode = (code: string): string | null => {
+  if (!/pragma\s+solidity/i.test(code)) return 'Missing Solidity pragma.';
+  if (!/\b(?:contract|interface|library)\s+[A-Za-z_][A-Za-z0-9_]*/.test(code)) return 'No contract, interface, or library declaration detected.';
+  return null;
+};
+
+const insertBeforeFinalBrace = (code: string, addition: string): string => {
+  const lastBrace = code.lastIndexOf('}');
+  if (lastBrace === -1) return `${code}\n${addition}`;
+  return `${code.slice(0, lastBrace).trimEnd()}\n${addition}\n${code.slice(lastBrace)}`;
+};
+
+const applyContractModification = (code: string, instruction: string): string => {
+  const lower = instruction.toLowerCase();
+  let updated = code;
+
+  if ((lower.includes('burn') || lower.includes('burnable')) && !/function\s+burn\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+    }`);
+  }
+
+  if ((lower.includes('pause') || lower.includes('pausable')) && !/function\s+pause\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    bool public paused;
+
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
+        _;
+    }
+
+    function pause() public {
+        paused = true;
+    }
+
+    function unpause() public {
+        paused = false;
+    }`);
+  }
+
+  if ((lower.includes('staking') || lower.includes('stake')) && !/function\s+stake\s*\(/.test(updated)) {
+    updated = insertBeforeFinalBrace(updated, `
+    mapping(address => uint256) public stakedBalance;
+
+    function stake(uint256 amount) public {
+        require(amount > 0, "Amount must be greater than zero");
+        stakedBalance[msg.sender] += amount;
+    }
+
+    function unstake(uint256 amount) public {
+        require(stakedBalance[msg.sender] >= amount, "Insufficient staked balance");
+        stakedBalance[msg.sender] -= amount;
+    }`);
+  }
+
+  return updated;
+};
+
 const ChatInterface: React.FC = () => {
   const { account, signer, isConnected, connectWallet } = useWeb3();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -228,11 +325,12 @@ const ChatInterface: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
+    const submittedInput = inputValue.trim();
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputValue,
+      content: submittedInput,
       timestamp: Date.now()
     };
     
@@ -244,10 +342,13 @@ const ChatInterface: React.FC = () => {
     setConversationContext(prev => [...prev, userMessage]);
     
     try {
-      const normalizedInput = inputValue.toLowerCase().trim();
+      const normalizedInput = submittedInput.toLowerCase().trim();
       
-      // Check if the message is a greeting
-      if (isGreeting(normalizedInput)) {
+      if (isSolidityCode(submittedInput)) {
+        await handlePastedContract(submittedInput);
+      } else if (currentContract?.code && MODIFICATION_PATTERN.test(submittedInput)) {
+        await handleContractRequest(submittedInput, userMessage.id);
+      } else if (isGreeting(normalizedInput)) {
         await handleGreeting();
       }
       // Check if the message is asking for an explanation or a contract
@@ -268,6 +369,40 @@ const ChatInterface: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handlePastedContract = async (code: string) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const name = extractContractName(code);
+    const solidityVersion = extractSolidityVersion(code);
+    const features = detectContractFeatures(code);
+    const validationIssue = validateSolidityCode(code);
+
+    setIsCompiled(false);
+    setCompilationError(validationIssue);
+    setCurrentContract({
+      name,
+      code,
+      type: features[0] || 'custom',
+      abi: null,
+      bytecode: null,
+    });
+
+    const assistantMessage: Message = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: `${validationIssue ? `⚠️ ${validationIssue}\n\n` : '✅ Contract detected. Ready to compile.\n\n'}Contract Name: ${name}\nSolidity Version: ${solidityVersion}\nDetected Features: ${features.join(', ')}`,
+      timestamp: Date.now(),
+      contractData: {
+        code,
+        name,
+        type: features[0] || 'custom',
+      }
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+    setConversationContext(prev => [...prev, assistantMessage]);
   };
 
   // Handle greeting messages
@@ -335,43 +470,33 @@ const ChatInterface: React.FC = () => {
                          message.toLowerCase().includes('modify') ||
                          message.toLowerCase().includes('change');
     
-    // If current contract exists and this is a modification request, use that context
     if (isModification && currentContract?.code) {
-      // Generate a response acknowledging the modification request
-      const modificationRequestMessage: Message = {
+      const updatedCode = applyContractModification(currentContract.code, message);
+      const updatedName = extractContractName(updatedCode) || currentContract.name;
+      const updatedFeatures = detectContractFeatures(updatedCode);
+      const modificationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `I'll modify the current ${currentContract.type} contract to implement your request. Generating updated code...`,
-        timestamp: Date.now()
+        content: `Updated existing contract.\n\nContract Name: ${updatedName}\nSolidity Version: ${extractSolidityVersion(updatedCode)}\nDetected Features: ${updatedFeatures.join(', ')}`,
+        timestamp: Date.now(),
+        contractData: {
+          code: updatedCode,
+          name: updatedName,
+          type: currentContract.type || updatedFeatures[0] || 'custom'
+        }
       };
       
-      setMessages(prev => [...prev, modificationRequestMessage]);
-      // Add assistant message to conversation context
-      setConversationContext(prev => [...prev, modificationRequestMessage]);
-    }
-    
-    // Check if this is a generic contract request or a specific one
-    const isGenericRequest = 
-      message.includes('contract') && 
-      !message.includes('name') && 
-      !message.includes('symbol') &&
-      !message.includes('called') &&
-      !message.includes('create') &&
-      !message.includes('generate') &&
-      !message.includes('build');
-    
-    if (isGenericRequest) {
-      // Ask for more details before generating
-      const detailRequestMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: "I'd be happy to create a smart contract for you. Could you provide some specific details like the token name, symbol, or functionality you need? For example, do you want an ERC20 token, NFT collection, staking mechanism, or something else?",
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, detailRequestMessage]);
-      // Add assistant message to conversation context
-      setConversationContext(prev => [...prev, detailRequestMessage]);
+      setMessages(prev => [...prev, modificationMessage]);
+      setConversationContext(prev => [...prev, modificationMessage]);
+      setIsCompiled(false);
+      setCompilationError(null);
+      setCurrentContract({
+        name: updatedName,
+        code: updatedCode,
+        type: currentContract.type || updatedFeatures[0] || 'custom',
+        abi: null,
+        bytecode: null
+      });
       return;
     }
     
@@ -387,7 +512,7 @@ const ChatInterface: React.FC = () => {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: `I've generated a ${contractResult.type} contract named ${contractResult.name} based on your requirements. The contract includes all necessary functionality with proper security measures and follows current Solidity best practices. You can now compile and deploy it to the Base Mainnet.`,
+      content: `Generated ${contractResult.type} contract.\n\nContract Name: ${contractResult.name}\nSolidity Version: ${extractSolidityVersion(contractResult.code)}\nDetected Features: ${detectContractFeatures(contractResult.code).join(', ')}`,
       timestamp: Date.now(),
       contractData: {
         code: contractResult.code,
@@ -528,7 +653,7 @@ const ChatInterface: React.FC = () => {
       const compilationMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: "Contract compiled successfully! You can now deploy it to the Base Mainnet.",
+        content: `✅ Contract compiled successfully. Deploy is enabled.\n\nContract Name: ${currentContract.name}\nABI: ${generatedAbi.length} entries\nBytecode: Ready`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -619,7 +744,7 @@ const ChatInterface: React.FC = () => {
       const deploymentMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: `Contract deployed successfully to the Base Mainnet at address ${result.address}`,
+        content: `✅ Contract deployed to Base Mainnet.\n\nContract Address: ${result.address}\nTx Hash: ${result.deploymentTx}\nExplorer Link: ${BASE_TESTNET.blockExplorerUrl}/address/${result.address}\nABI:\n${JSON.stringify(currentContract.abi, null, 2)}`,
         timestamp: Date.now(),
         contractData: {
           name: currentContract.name,
@@ -784,6 +909,15 @@ const ChatInterface: React.FC = () => {
                           >
                             {isCompiling && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                             {isCompiling ? 'Compiling...' : 'Compile'}
+                          </Button>
+
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => copyToClipboard(message.contractData?.code || '', 'Contract code copied!')}
+                          >
+                            <Copy className="mr-1 h-3 w-3" />
+                            Copy Code
                           </Button>
                           
                           <TooltipProvider>
