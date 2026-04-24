@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { BASE_TESTNET } from "@/config/base";
-import { hasEnoughBalance, deployContract, formatAddress } from "@/utils/blockchain";
+import { deployContract, estimateDeploymentCost, formatAddress } from "@/utils/blockchain";
 import { generateContract } from "@/utils/enhancedContractGenerator";
 import { toast } from "sonner";
 import { DeployedContract, SmartContract, ContractType } from "@/types/blockchain";
@@ -155,6 +155,10 @@ const ChatInterface: React.FC = () => {
   const [isCompiled, setIsCompiled] = useState(false);
   const [compilationError, setCompilationError] = useState<string | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deploymentEstimate, setDeploymentEstimate] = useState<{
+    balanceEth: string;
+    estimatedCostEth: string;
+  } | null>(null);
   const [currentContract, setCurrentContract] = useState<{
     name: string;
     code: string;
