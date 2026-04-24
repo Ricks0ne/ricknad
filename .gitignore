@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Vite env files — never commit real API keys; use .env.example as a template.
+# Environment files (may contain API keys; see .env.example for the expected vars)
 .env
 .env.*
 !.env.example
