@@ -13,7 +13,7 @@ const BaseMetrics = () => {
   const { data: metricsData, isLoading, isError, error } = useQuery({
     queryKey: ['base-mainnet-live-metrics'],
     queryFn: fetchBaseNetworkMetrics,
-    refetchInterval: 4000,
+    refetchInterval: 1500,
     retry: 2,
   });
 
@@ -34,18 +34,28 @@ const BaseMetrics = () => {
       icon: Blocks,
     },
     {
-      title: "Gas Price",
-      value: metricsData ? `${metricsData.gasPriceGwei} Gwei` : "Loading...",
+      title: "Base Fee",
+      value: metricsData ? `${metricsData.baseFeeGwei} Gwei` : "Loading...",
       icon: TrendingUp,
     },
     {
-      title: "Block Time",
+      title: "Priority Fee",
+      value: metricsData ? `${metricsData.priorityFeeGwei} Gwei` : "Loading...",
+      icon: TrendingUp,
+    },
+    {
+      title: "Timestamp",
       value: metricsData ? new Date(metricsData.blockTimestamp).toLocaleTimeString() : "Loading...",
       icon: Clock,
     },
     {
-      title: "Tx / Block",
+      title: "Latest Tx",
       value: metricsData?.txCount.toLocaleString() || "Loading...",
+      icon: Activity,
+    },
+    {
+      title: "Pending Tx",
+      value: metricsData?.pendingTxCount.toLocaleString() || "Loading...",
       icon: Activity,
     },
     {
@@ -55,13 +65,13 @@ const BaseMetrics = () => {
     },
     {
       title: "Network",
-      value: isError ? "Disconnected" : "Connected",
+      value: isError ? "Disconnected ❌" : metricsData?.syncing ? "Syncing ⚠️" : "Connected ✅",
       icon: isError ? WifiOff : Wifi,
     },
   ];
 
   return (
-    <Card className="mt-6 bg-black/40 border border-white/10">
+    <Card className="mt-6 bg-card/80 border border-border">
       <CardHeader>
         <CardTitle>Network Metrics</CardTitle>
       </CardHeader>
@@ -69,14 +79,14 @@ const BaseMetrics = () => {
         {isError && (
           <p className="mb-4 text-sm text-destructive">{error instanceof Error ? error.message : 'Base RPC connection failed.'}</p>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {metrics.map((metric) => (
             <div
               key={metric.title}
-              className="bg-black/40 rounded-lg text-white flex flex-col items-center justify-center text-center p-4 border border-white/10 hover:border-base-primary/30 transition-all duration-300"
+              className="bg-card rounded-lg text-card-foreground flex flex-col items-center justify-center text-center p-4 border border-border hover:border-base-primary/30 transition-all duration-300"
             >
               <metric.icon className="h-6 w-6 mb-2 text-base-primary" />
-              <h3 className="text-sm font-medium text-gray-400">{metric.title}</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{metric.title}</h3>
               {isLoading ? <Skeleton className="mt-2 h-5 w-24" /> : <p className="text-lg font-bold mt-1">{metric.value}</p>}
             </div>
           ))}

@@ -10,8 +10,12 @@ export interface BaseNetworkMetrics {
   blockNumber: number;
   gasPriceWei: bigint;
   gasPriceGwei: string;
+  baseFeeGwei: string;
+  priorityFeeGwei: string;
   blockTimestamp: number;
   txCount: number;
+  pendingTxCount: number;
+  syncing: boolean;
   connected: boolean;
 }
 
@@ -36,6 +40,15 @@ export const getProvider = () => {
   }
 };
 
+export const getRealtimeProvider = () => {
+  try {
+    return new ethers.JsonRpcProvider(BASE_TESTNET.realtimeRpcUrl || BASE_TESTNET.rpcUrl);
+  } catch (error) {
+    console.error("Failed to initialize realtime provider:", error);
+    throw error;
+  }
+};
+
 export const isValidWalletAddress = (address: string) => ethers.isAddress(address);
 
 export const assertBaseMainnet = async (provider = getProvider()) => {
@@ -49,25 +62,35 @@ export const assertBaseMainnet = async (provider = getProvider()) => {
 
 export const fetchBaseNetworkMetrics = async (): Promise<BaseNetworkMetrics> => {
   const provider = getProvider();
+  const realtimeProvider = getRealtimeProvider();
   await assertBaseMainnet(provider);
 
-  const [blockHex, gasPriceHex] = await Promise.all([
-    provider.send("eth_blockNumber", []),
+  const [latestBlock, pendingBlock, gasPriceHex, feeHistory, syncing] = await Promise.all([
+    provider.send("eth_getBlockByNumber", ["latest", true]),
+    realtimeProvider.send("eth_getBlockByNumber", ["pending", true]).catch(() => null),
     provider.send("eth_gasPrice", []),
+    provider.send("eth_feeHistory", ["0x5", "latest", [50]]).catch(() => null),
+    provider.send("eth_syncing", []).catch(() => false),
   ]);
 
-  const blockNumber = Number(BigInt(blockHex));
-  const gasPriceWei = BigInt(gasPriceHex);
-  const block = await provider.getBlock(blockNumber);
+  if (!latestBlock) throw new Error("Unable to fetch latest Base block from RPC.");
 
-  if (!block) throw new Error("Unable to fetch latest Base block from RPC.");
+  const blockNumber = Number(BigInt(latestBlock.number));
+  const gasPriceWei = BigInt(gasPriceHex);
+  const baseFeeWei = latestBlock.baseFeePerGas ? BigInt(latestBlock.baseFeePerGas) : 0n;
+  const rewardSamples = feeHistory?.reward?.flat?.() || [];
+  const priorityFeeWei = rewardSamples.length ? BigInt(rewardSamples[rewardSamples.length - 1]) : gasPriceWei > baseFeeWei ? gasPriceWei - baseFeeWei : 0n;
 
   return {
     blockNumber,
     gasPriceWei,
     gasPriceGwei: Number(ethers.formatUnits(gasPriceWei, "gwei")).toFixed(4),
-    blockTimestamp: block.timestamp * 1000,
-    txCount: block.transactions.length,
+    baseFeeGwei: Number(ethers.formatUnits(baseFeeWei, "gwei")).toFixed(4),
+    priorityFeeGwei: Number(ethers.formatUnits(priorityFeeWei, "gwei")).toFixed(4),
+    blockTimestamp: Number(BigInt(latestBlock.timestamp)) * 1000,
+    txCount: latestBlock.transactions?.length || 0,
+    pendingTxCount: pendingBlock?.transactions?.length || 0,
+    syncing: syncing !== false,
     connected: true,
   };
 };

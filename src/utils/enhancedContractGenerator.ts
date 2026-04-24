@@ -25,7 +25,6 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title ${name} Token
@@ -33,8 +32,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * @custom:security-contact security@${name.toLowerCase()}.com
  */
 contract ${name} is ERC20, ERC20Burnable, Ownable {
-    using SafeMath for uint256;
-
     ${cap !== "0" ? `uint256 private _cap = ${cap} * 10 ** decimals();` : ''}
     
     event TokensMinted(address indexed to, uint256 amount);
@@ -232,56 +229,41 @@ contract ${name} is ERC721, ERC721URIStorage, Ownable {
     }
 }`,
 
-  staking: (tokenAddress: string = "", stakingPeriodDays: number = 30, rewardRate: number = 10): string => `// SPDX-License-Identifier: MIT
+  staking: (tokenAddress: string = "", stakingPeriodDays: number = 30, rewardRate: number = 5): string => `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title Staking Contract
- * @dev Allows users to stake tokens and earn rewards
+ * @title BaseStaking
+ * @dev ERC20 staking contract with a fixed ${stakingPeriodDays}-day lock period.
  * @custom:security-contact security@staking.com
  */
-contract Staking is ReentrancyGuard, Ownable {
+contract BaseStaking is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    // Staking token (e.g., LP token or any ERC20)
-    IERC20 public stakingToken;
-    
-    // Reward token (could be the same as staking token)
-    IERC20 public rewardToken;
-    
-    // Reward rate (percentage with 2 decimals, e.g., 500 = 5%)
-    uint256 public rewardRate = ${rewardRate * 100}; // ${rewardRate}%
-    
-    // Staking period in seconds
-    uint256 public stakingPeriodSeconds = ${stakingPeriodDays} days;
-    
-    // Info for each user
-    struct UserInfo {
-        uint256 amount;           // How many tokens the user has staked
-        uint256 stakingStartTime;  // When the user started staking
-        uint256 lastRewardClaim;   // Last time user claimed rewards
-        bool isStaking;           // Is the user currently staking
+    IERC20 public immutable stakingToken;
+    uint256 public constant LOCK_PERIOD = ${stakingPeriodDays} days;
+    uint256 public rewardRate = ${rewardRate * 100};
+
+    struct StakeInfo {
+        uint256 amount;
+        uint256 startTime;
     }
 
-    // User info mapping
-    mapping(address => UserInfo) public userInfo;
-    
-    // Total staked amount
+    mapping(address => StakeInfo) public stakes;
     uint256 public totalStaked;
-    
-    // Events
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
-    event RewardClaimed(address indexed user, uint256 amount);
 
-    constructor(address _stakingToken${tokenAddress ? '' : ', address _rewardToken'}) Ownable(msg.sender) {
+    event Staked(address indexed user, uint256 amount, uint256 startTime);
+    event Withdrawn(address indexed user, uint256 amount, uint256 reward);
+    event RewardRateUpdated(uint256 newRewardRate);
+
+    constructor(address _stakingToken) Ownable(msg.sender) {
+        require(_stakingToken != address(0), "Invalid token address");
         stakingToken = IERC20(${tokenAddress ? tokenAddress : '_stakingToken'});
-        rewardToken = IERC20(${tokenAddress ? tokenAddress : '_rewardToken'});
     }
 
     /**
@@ -289,80 +271,32 @@ contract Staking is ReentrancyGuard, Ownable {
      * @param amount The amount of tokens to stake
      */
     function stake(uint256 amount) external nonReentrant {
-        require(amount > 0, "Cannot stake 0");
-        
-        UserInfo storage user = userInfo[msg.sender];
-        
-        // Update user staking info
-        user.amount += amount;
-        user.stakingStartTime = block.timestamp;
-        user.lastRewardClaim = block.timestamp;
-        user.isStaking = true;
-        
-        // Update total staked
-        totalStaked += amount;
-        
-        // Transfer tokens to contract
+        require(amount > 0, "Cannot stake zero");
+        require(stakes[msg.sender].amount == 0, "Already staking");
+
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        
-        emit Staked(msg.sender, amount);
+        stakes[msg.sender] = StakeInfo({amount: amount, startTime: block.timestamp});
+        totalStaked += amount;
+
+        emit Staked(msg.sender, amount, block.timestamp);
     }
 
     /**
      * @dev Withdraws staked tokens and rewards
      */
     function withdraw() external nonReentrant {
-        UserInfo storage user = userInfo[msg.sender];
-        
-        require(user.isStaking, "No active stake");
-        require(block.timestamp >= user.stakingStartTime + stakingPeriodSeconds, "Staking period not complete");
-        
-        uint256 amount = user.amount;
+        StakeInfo memory userStake = stakes[msg.sender];
+        uint256 amount = userStake.amount;
         require(amount > 0, "No tokens to withdraw");
-        
-        // Calculate rewards
-        uint256 rewards = calculateRewards(msg.sender);
-        
-        // Reset user staking info
-        user.amount = 0;
-        user.stakingStartTime = 0;
-        user.lastRewardClaim = 0;
-        user.isStaking = false;
-        
-        // Update total staked
-        totalStaked -= amount;
-        
-        // Transfer staked tokens back to user
-        stakingToken.safeTransfer(msg.sender, amount);
-        
-        // Transfer rewards if available
-        if (rewards > 0) {
-            rewardToken.safeTransfer(msg.sender, rewards);
-            emit RewardClaimed(msg.sender, rewards);
-        }
-        
-        emit Withdrawn(msg.sender, amount);
-    }
+        require(block.timestamp >= userStake.startTime + LOCK_PERIOD, "Lock period active");
 
-    /**
-     * @dev Claims rewards without withdrawing staked tokens
-     */
-    function claimRewards() external nonReentrant {
-        UserInfo storage user = userInfo[msg.sender];
-        
-        require(user.isStaking, "No active stake");
-        
-        // Calculate rewards
-        uint256 rewards = calculateRewards(msg.sender);
-        require(rewards > 0, "No rewards to claim");
-        
-        // Update last claim time
-        user.lastRewardClaim = block.timestamp;
-        
-        // Transfer rewards
-        rewardToken.safeTransfer(msg.sender, rewards);
-        
-        emit RewardClaimed(msg.sender, rewards);
+        uint256 reward = calculateReward(msg.sender);
+        delete stakes[msg.sender];
+        totalStaked -= amount;
+
+        stakingToken.safeTransfer(msg.sender, amount + reward);
+
+        emit Withdrawn(msg.sender, amount, reward);
     }
 
     /**
@@ -370,20 +304,10 @@ contract Staking is ReentrancyGuard, Ownable {
      * @param account The user address
      * @return The amount of reward tokens earned
      */
-    function calculateRewards(address account) public view returns (uint256) {
-        UserInfo storage user = userInfo[account];
-        
-        if (!user.isStaking || user.amount == 0) {
-            return 0;
-        }
-        
-        // Calculate staking duration
-        uint256 stakingDuration = block.timestamp - user.lastRewardClaim;
-        
-        // Calculate rewards based on staking amount, duration and reward rate
-        uint256 rewards = (user.amount * stakingDuration * rewardRate) / (365 days * 10000);
-        
-        return rewards;
+    function calculateReward(address account) public view returns (uint256) {
+        StakeInfo memory userStake = stakes[account];
+        if (userStake.amount == 0) return 0;
+        return (userStake.amount * rewardRate) / 10000;
     }
 
     /**
@@ -392,14 +316,7 @@ contract Staking is ReentrancyGuard, Ownable {
      */
     function setRewardRate(uint256 newRewardRate) external onlyOwner {
         rewardRate = newRewardRate;
-    }
-
-    /**
-     * @dev Sets the staking period
-     * @param newStakingPeriodDays The new staking period in days
-     */
-    function setStakingPeriod(uint256 newStakingPeriodDays) external onlyOwner {
-        stakingPeriodSeconds = newStakingPeriodDays * 1 days;
+        emit RewardRateUpdated(newRewardRate);
     }
 
     /**
@@ -1046,11 +963,22 @@ contract ${name}Implementation is Initializable, OwnableUpgradeable, UUPSUpgrade
 // Helper function to parse common contract parameters from user input
 function parseContractParameters(input: string): Record<string, any> {
   const params: Record<string, any> = {};
+  const toContractName = (value: string) => {
+    const cleaned = value
+      .replace(/\b(called|named|with|symbol|supply|cap|token|contract)\b/gi, ' ')
+      .replace(/[^a-zA-Z0-9 ]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 3)
+      .map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join('');
+    return cleaned || 'BaseContract';
+  };
   
   // Extract token name
   const nameMatch = input.match(/(?:called|named|name[: ]+|token[: ]+|named[: ]+|for ?a ?token ?(?:called|named) )["']?([a-zA-Z0-9 ]+)["']?/i);
   if (nameMatch && nameMatch[1]) {
-    params.name = nameMatch[1].trim();
+    params.name = toContractName(nameMatch[1]);
   }
 
   // Extract token symbol
@@ -1070,7 +998,7 @@ function parseContractParameters(input: string): Record<string, any> {
 
   // Extract staking parameters
   if (input.includes('staking') || input.includes('stake')) {
-    const periodMatch = input.match(/(?:period|duration|lock)[: ]+["']?([0-9,.]+)[ ]?(days?|weeks?|months?)["']?/i);
+    const periodMatch = input.match(/(?:period|duration|lock)?\s*["']?([0-9,.]+)[ ]?(days?|weeks?|months?)["']?\s*(?:lock|period|duration)?/i);
     if (periodMatch && periodMatch[1]) {
       let period = parseInt(periodMatch[1].replace(/,/g, ''));
       if (periodMatch[2].startsWith('week')) period *= 7;
@@ -1107,7 +1035,9 @@ function determineContractType(input: string, existingContext: ContractContext):
   input = input.toLowerCase();
   
   // Contract type detection based on keywords in prompt
-  if (input.includes('erc721') || input.includes('nft') || input.includes('collectible')) {
+  if (input.includes('stake') || input.includes('staking')) {
+    return 'staking';
+  } else if (input.includes('erc721') || input.includes('nft') || input.includes('collectible')) {
     return 'erc721';
   } else if (input.includes('erc1155') || input.includes('multi-token')) {
     return 'erc1155';
@@ -1117,8 +1047,6 @@ function determineContractType(input: string, existingContext: ContractContext):
       return 'erc20Upgradeable';
     }
     return 'erc20';
-  } else if (input.includes('stake') || input.includes('staking')) {
-    return 'staking';
   } else if (input.includes('dao') || input.includes('governance') || input.includes('proposal') || input.includes('vote')) {
     return 'dao';
   } else if (input.includes('timelock')) {
@@ -1194,7 +1122,7 @@ export function enhancedGenerateContract(userPrompt: string): {
   
   // If no symbol for token contracts, create one from the name
   if ((contractType.includes('erc20') || contractType.includes('erc721')) && !params.symbol) {
-    params.symbol = params.name.replace(/[^A-Z]/gi, '').substring(0, 5).toUpperCase();
+    params.symbol = params.name.replace(/[^A-Z]/gi, '').substring(0, 4).toUpperCase();
   }
   
   // Generate contract code based on the determined type
