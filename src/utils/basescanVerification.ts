@@ -46,6 +46,17 @@ export interface SubmitVerificationInput {
   evmVersion?: string;
   licenseType?: number;
   constructorArguments?: string;
+  /**
+   * Submission format. Defaults to `solidity-single-file`. Use
+   * `solidity-standard-json-input` when `sourceCode` is a JSON string
+   * produced by `buildStandardJsonInput` — required for contracts that
+   * `import "@openzeppelin/..."` or any other bare-package path.
+   *
+   * When `solidity-standard-json-input` is used, `contractName` MUST be
+   * fully-qualified as `path/to/Main.sol:ContractName` so Etherscan
+   * can select the right contract out of the sources map.
+   */
+  codeFormat?: "solidity-single-file" | "solidity-standard-json-input";
 }
 
 const getApiKey = (): string | null => {
@@ -95,11 +106,12 @@ export const submitVerification = async (
   // `Missing or unsupported chainid parameter (required for v2 api)`.
   const endpoint = `${ETHERSCAN_V2_URL}?chainid=${encodeURIComponent(CHAIN_ID)}`;
 
+  const codeFormat = input.codeFormat ?? "solidity-single-file";
   const body = new URLSearchParams();
   body.set("apikey", apiKey);
   body.set("module", "contract");
   body.set("action", "verifysourcecode");
-  body.set("codeformat", "solidity-single-file");
+  body.set("codeformat", codeFormat);
   body.set("contractaddress", input.contractAddress);
   body.set("sourceCode", input.sourceCode);
   body.set("contractname", input.contractName);

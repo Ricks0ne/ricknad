@@ -33,6 +33,11 @@ import {
   SOLC_VERSIONS,
   type PollResult,
 } from "@/utils/basescanVerification";
+import {
+  countDirectImports,
+  DEFAULT_OZ_VERSION,
+  hasExternalImports,
+} from "@/utils/solidityImports";
 import { BASE_MAINNET } from "@/config/base";
 
 interface ContractVerificationProps {
@@ -106,6 +111,11 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
   const [evmVersion, setEvmVersion] = useState("default");
   const [licenseType, setLicenseType] = useState<number>(() => inferLicenseType(sourceCode));
   const [constructorArguments, setConstructorArguments] = useState("");
+  const [ozVersion, setOzVersion] = useState(DEFAULT_OZ_VERSION);
+  const [fetchedImports, setFetchedImports] = useState<string[]>([]);
+
+  const requiresStandardJson = useMemo(() => hasExternalImports(sourceCode), [sourceCode]);
+  const importCounts = useMemo(() => countDirectImports(sourceCode), [sourceCode]);
 
   useEffect(() => {
     setStored(getVerificationRecord(contractAddress));
@@ -127,12 +137,19 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
   const handleVerify = async () => {
     if (!canSubmit) return;
     setIsSubmitting(true);
-    setLiveMessage("Submitting source to BaseScan…");
+    setFetchedImports([]);
+    setLiveMessage(
+      requiresStandardJson ? "Resolving imports…" : "Submitting source to BaseScan…",
+    );
     const onPoll = (result: PollResult) => {
       if (result.kind === "pending") setLiveMessage(result.message);
       if (result.kind === "failure") setLiveMessage(result.reason);
       if (result.kind === "success") setLiveMessage(result.message);
       if (result.kind === "error") setLiveMessage(result.message);
+    };
+    const onFetchImport = (path: string) => {
+      setFetchedImports((prev) => (prev.includes(path) ? prev : [...prev, path]));
+      setLiveMessage(`Fetching ${path}`);
     };
     try {
       await verifyContractOnBaseScan({
@@ -145,7 +162,9 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
         evmVersion: evmVersion === "default" ? undefined : evmVersion,
         licenseType,
         constructorArguments: constructorArguments.trim() || undefined,
+        ozVersion: requiresStandardJson ? ozVersion : undefined,
         onPoll,
+        onFetchImport,
       });
     } finally {
       setStored(getVerificationRecord(contractAddress));
@@ -271,6 +290,36 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
           </Alert>
         )}
 
+        {status !== "success" && requiresStandardJson && (
+          <Alert className="bg-purple-50 border-purple-200">
+            <AlertDescription className="text-purple-900 space-y-2">
+              <p className="font-semibold">
+                Detected {importCounts.external} external import
+                {importCounts.external === 1 ? "" : "s"} (e.g. <code>@openzeppelin/…</code>).
+              </p>
+              <p className="text-sm">
+                BaseScan can't resolve bare-package paths on its own, so Ricknad will fetch the
+                full dependency graph from <code>unpkg.com</code> and submit as{" "}
+                <code>solidity-standard-json-input</code> instead of a single flat file. Pick the
+                OpenZeppelin version your contract was compiled against — a mismatch here will
+                cause BaseScan to return <code>Fail - Unable to verify</code>.
+              </p>
+              {fetchedImports.length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer">
+                    Resolved {fetchedImports.length} file{fetchedImports.length === 1 ? "" : "s"} so far
+                  </summary>
+                  <ul className="font-mono mt-1 max-h-40 overflow-auto">
+                    {fetchedImports.map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {status !== "success" && (
           <div className="p-4 border rounded-lg space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -341,6 +390,24 @@ const ContractVerification: React.FC<ContractVerificationProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              {requiresStandardJson && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="oz-version">OpenZeppelin contracts version</Label>
+                  <Input
+                    id="oz-version"
+                    placeholder={DEFAULT_OZ_VERSION}
+                    value={ozVersion}
+                    onChange={(e) => setOzVersion(e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Must match the version compiled into the deployed bytecode. Pragma{" "}
+                    <code>^0.8.20</code>+ generally implies OZ v5.x (default{" "}
+                    <code>{DEFAULT_OZ_VERSION}</code>). Older pragmas may need{" "}
+                    <code>4.9.6</code> or similar.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="ctorargs">
                   Constructor arguments (ABI-encoded hex, no <code>0x</code> prefix required)
