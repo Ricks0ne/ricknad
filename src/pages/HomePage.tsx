@@ -10,6 +10,7 @@ import { Transaction } from "@/types/blockchain";
 import { BASE_TESTNET } from "@/config/base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BaseMetrics from "@/components/dashboard/BaseMetrics";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const HomePage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchedAddress, setSearchedAddress] = useState('');
 
   const handleChatClick = () => {
     navigate('/chat');
@@ -33,6 +35,7 @@ const HomePage: React.FC = () => {
       // Get wallet balance
       const balance = await getWalletBalance(searchAddress);
       setWalletBalance(balance);
+      setSearchedAddress(searchAddress);
       
       // Get transactions - limit to 5 recent transactions
       const txs = await getWalletTransactions(searchAddress, 5);
@@ -44,6 +47,25 @@ const HomePage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!searchedAddress) return;
+    const refreshWallet = async () => {
+      try {
+        const [balance, txs] = await Promise.all([
+          getWalletBalance(searchedAddress),
+          getWalletTransactions(searchedAddress, 10),
+        ]);
+        setWalletBalance(balance);
+        setTransactions(txs);
+        setError(null);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to refresh wallet data.');
+      }
+    };
+    const interval = window.setInterval(refreshWallet, 12000);
+    return () => window.clearInterval(interval);
+  }, [searchedAddress]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -98,7 +120,7 @@ const HomePage: React.FC = () => {
               <div>
                 <CardTitle>Transaction History</CardTitle>
                 <CardDescription>
-                  5 most recent transactions
+                  Most recent indexed Base transactions
                 </CardDescription>
               </div>
               <Clock className="h-5 w-5 text-muted-foreground" />
@@ -112,6 +134,7 @@ const HomePage: React.FC = () => {
                       <TableHead>From</TableHead>
                       <TableHead>To</TableHead>
                       <TableHead>Value</TableHead>
+                        <TableHead>Gas Used</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
@@ -133,6 +156,7 @@ const HomePage: React.FC = () => {
                         <TableCell>{formatAddress(tx.from)}</TableCell>
                         <TableCell>{formatAddress(tx.to)}</TableCell>
                         <TableCell>{tx.value} ETH</TableCell>
+                        <TableCell>{tx.gasUsed}</TableCell>
                         <TableCell>{formatDate(tx.timestamp)}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded text-xs ${
@@ -151,7 +175,7 @@ const HomePage: React.FC = () => {
                 </Table>
               ) : (
                 <div className="text-center py-4 text-gray-500">
-                  {isLoading ? 'Fetching transactions...' : 'No transactions found'}
+                  {isLoading ? <Skeleton className="mx-auto h-5 w-48" /> : 'No transactions found'}
                 </div>
               )}
             </CardContent>
