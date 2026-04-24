@@ -1,87 +1,62 @@
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Blocks, TrendingUp, Activity, AlertCircle } from "lucide-react";
+import { Blocks, TrendingUp, Activity, AlertCircle, Clock, Wifi, WifiOff } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getProvider } from "@/utils/blockchain";
+import { fetchBaseNetworkMetrics, BaseNetworkMetrics } from "@/utils/blockchain";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const BaseMetrics = () => {
-  const provider = getProvider();
-  
-  // Fetch current block number
-  const { data: blockHeight } = useQuery({
-    queryKey: ['blockHeight'],
-    queryFn: async () => {
-      const height = await provider.getBlockNumber();
-      return height;
-    },
-    refetchInterval: 5000, // Refresh every 5 seconds
+  const previousMetrics = useRef<BaseNetworkMetrics | null>(null);
+  const [tps, setTps] = useState<number | null>(null);
+
+  const { data: metricsData, isLoading, isError, error } = useQuery({
+    queryKey: ['base-mainnet-live-metrics'],
+    queryFn: fetchBaseNetworkMetrics,
+    refetchInterval: 4000,
+    retry: 2,
   });
 
-  // Fetch recent blocks for TPS calculation
-  const { data: tps } = useQuery({
-    queryKey: ['tps'],
-    queryFn: async () => {
-      const latestBlock = await provider.getBlock('latest');
-      const prevBlock = await provider.getBlock(latestBlock!.number - 1);
-      
-      if (!latestBlock || !prevBlock) return 0;
-      
-      const timeDiff = latestBlock.timestamp - prevBlock.timestamp;
-      const txCount = latestBlock.transactions.length;
-      
-      return timeDiff > 0 ? txCount / timeDiff : 0;
-    },
-    refetchInterval: 5000,
-  });
-
-  // Fetch average gas usage
-  const { data: avgGas } = useQuery({
-    queryKey: ['avgGas'],
-    queryFn: async () => {
-      const block = await provider.getBlock('latest');
-      if (!block || !block.transactions.length) return 0;
-      
-      const txs = await Promise.all(
-        block.transactions.slice(0, 5).map(hash => provider.getTransaction(hash))
-      );
-      
-      const totalGas = txs.reduce((acc, tx) => acc + Number(tx?.gasLimit || 0), 0);
-      return Math.floor(totalGas / txs.length);
-    },
-    refetchInterval: 5000,
-  });
-
-  // Fetch pending transactions
-  const { data: pendingTxs } = useQuery({
-    queryKey: ['pendingTxs'],
-    queryFn: async () => {
-      const block = await provider.getBlock('latest');
-      return block?.transactions.length || 0;
-    },
-    refetchInterval: 5000,
-  });
+  useEffect(() => {
+    if (!metricsData) return;
+    const previous = previousMetrics.current;
+    if (previous && metricsData.blockNumber !== previous.blockNumber) {
+      const blockTime = (metricsData.blockTimestamp - previous.blockTimestamp) / 1000;
+      setTps(blockTime > 0 ? metricsData.txCount / blockTime : 0);
+    }
+    previousMetrics.current = metricsData;
+  }, [metricsData]);
 
   const metrics = [
     {
       title: "Block Height",
-      value: blockHeight?.toString() || "Loading...",
+      value: metricsData?.blockNumber.toLocaleString() || "Loading...",
       icon: Blocks,
     },
     {
-      title: "TPS",
-      value: tps ? tps.toFixed(2) : "Loading...",
+      title: "Gas Price",
+      value: metricsData ? `${metricsData.gasPriceGwei} Gwei` : "Loading...",
       icon: TrendingUp,
     },
     {
-      title: "Avg Gas",
-      value: avgGas ? avgGas.toLocaleString() : "Loading...",
+      title: "Block Time",
+      value: metricsData ? new Date(metricsData.blockTimestamp).toLocaleTimeString() : "Loading...",
+      icon: Clock,
+    },
+    {
+      title: "Tx / Block",
+      value: metricsData?.txCount.toLocaleString() || "Loading...",
       icon: Activity,
     },
     {
-      title: "Pending Txs",
-      value: pendingTxs?.toString() || "Loading...",
+      title: "Approx TPS",
+      value: tps === null ? "Calculating..." : tps.toFixed(2),
       icon: AlertCircle,
+    },
+    {
+      title: "Network",
+      value: isError ? "Disconnected" : "Connected",
+      icon: isError ? WifiOff : Wifi,
     },
   ];
 
@@ -91,7 +66,10 @@ const BaseMetrics = () => {
         <CardTitle>Network Metrics</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isError && (
+          <p className="mb-4 text-sm text-destructive">{error instanceof Error ? error.message : 'Base RPC connection failed.'}</p>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {metrics.map((metric) => (
             <div
               key={metric.title}
@@ -99,7 +77,7 @@ const BaseMetrics = () => {
             >
               <metric.icon className="h-6 w-6 mb-2 text-base-primary" />
               <h3 className="text-sm font-medium text-gray-400">{metric.title}</h3>
-              <p className="text-lg font-bold mt-1">{metric.value}</p>
+              {isLoading ? <Skeleton className="mt-2 h-5 w-24" /> : <p className="text-lg font-bold mt-1">{metric.value}</p>}
             </div>
           ))}
         </div>
