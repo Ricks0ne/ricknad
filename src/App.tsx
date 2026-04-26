@@ -11,6 +11,16 @@ import MyContractsPage from "./pages/MyContractsPage";
 import Resources from "./pages/Resources";
 import NotFound from "./pages/NotFound";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import BaseBadge from "./components/BaseBadge";
+
+function App() {
+  return (
+    <>
+      {/* your app */}
+      <BaseBadge />
+    </>
+  );
+}
 
 // Create a client
 const queryClient = new QueryClient({
