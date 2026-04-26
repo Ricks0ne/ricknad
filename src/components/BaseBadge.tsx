@@ -17,8 +17,27 @@ export default function BaseBadge() {
         boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
         textDecoration: "none",
         zIndex: 1999999,
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        transition: "transform 0.2s ease",
       }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.transform = "scale(1.05)")
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.transform = "scale(1)")
+      }
     >
+      <img
+        src="https://avatars.githubusercontent.com/u/108554348?s=200&v=4"
+        alt="Base"
+        style={{
+          width: "16px",
+          height: "16px",
+          borderRadius: "4px",
+        }}
+      />
       Built on Base ⚡
     </a>
   );
