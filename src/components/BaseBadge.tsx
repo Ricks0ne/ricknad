@@ -16,7 +16,7 @@ export default function BaseBadge() {
         fontWeight: "500",
         boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
         textDecoration: "none",
-        zIndex: 1000,
+        zIndex: 1999999,
       }}
     >
       Built on Base ⚡
