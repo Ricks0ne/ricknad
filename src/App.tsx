@@ -13,16 +13,6 @@ import NotFound from "./pages/NotFound";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BaseBadge from "./components/BaseBadge";
 
-function App() {
-  return (
-    <>
-      {/* your app */}
-      <BaseBadge />
-    </>
-  );
-}
-
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -46,6 +36,7 @@ const App = () => (
             <Route path="/resources" element={<Layout><Resources /></Layout>} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
+          <BaseBadge />
         </BrowserRouter>
       </TooltipProvider>
     </Web3Provider>
