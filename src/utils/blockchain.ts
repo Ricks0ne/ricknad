@@ -194,12 +194,18 @@ export const addBaseNetwork = async () => {
 };
 
 // Deploy a smart contract - Fixed bytecode handling
-export const deployContract = async (abi: any[], bytecode: string, signer: ethers.Signer) => {
+export const deployContract = async (
+  abi: any[],
+  bytecode: string,
+  signer: ethers.Signer,
+  constructorArgs: unknown[] = [],
+) => {
   try {
     console.log("Deploying contract with signer:", signer);
     console.log("ABI length:", abi.length);
     console.log("Bytecode length:", bytecode.length);
-    
+    console.log("Constructor args:", constructorArgs);
+
     // Ensure bytecode is properly formatted with 0x prefix
     const formattedBytecode = bytecode.startsWith('0x') ? bytecode : `0x${bytecode}`;
     
@@ -218,7 +224,7 @@ export const deployContract = async (abi: any[], bytecode: string, signer: ether
     
     // Deploy the contract - this will trigger a transaction signature request
     console.log("Deploying contract...");
-    const contract = await factory.deploy();
+    const contract = await factory.deploy(...constructorArgs);
     console.log("Deployment transaction sent, waiting for confirmation...");
     
     // Wait for the contract to be deployed
@@ -246,6 +252,7 @@ export const estimateDeploymentCost = async (
   abi: any[],
   bytecode: string,
   signer: ethers.Signer,
+  constructorArgs: unknown[] = [],
 ): Promise<DeploymentCostEstimate> => {
   const provider = signer.provider;
   if (!provider) throw new Error("No wallet provider available for gas estimation.");
@@ -273,7 +280,7 @@ export const estimateDeploymentCost = async (
   let estimatedGas: bigint;
 
   try {
-    const deployTransaction = await factory.getDeployTransaction();
+    const deployTransaction = await factory.getDeployTransaction(...constructorArgs);
     estimatedGas = await signer.estimateGas(deployTransaction);
   } catch (error: any) {
     console.error("Deployment gas estimation failed:", error);
