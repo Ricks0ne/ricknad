@@ -1,7 +1,7 @@
 
 # BasedRicks
 
-BasedRicks is a decentralized application that connects to the Base Sepolia.  
+BasedRicks is a decentralized application that connects to the Base mainnet.  
 It offers smart contract generation, real-time metrics, and interactive blockchain insights.
 
 ## Features
@@ -25,14 +25,14 @@ It offers smart contract generation, real-time metrics, and interactive blockcha
 - One-click interaction with deployed contracts
 
 ### Base Integration
-- Full Base Sepolia compatibility
+- Full Base mainnet compatibility
 - Connect with MetaMask or other wallets
 - View transaction history and contract interactions
 - Access to Base blockchain explorers
 
 ## Technical Details
-- Deployed to Base Sepolia at https://testnet-rpc.base.org
-- Chain ID: 10143
+- Deployed to Base mainnet at https://mainnet.base.org
+- Chain ID: 8453
 - Built with React, TypeScript, Ethers.js, and Tailwind CSS
 - Responsive UI with smooth animations
 
