@@ -60,8 +60,11 @@ export interface SubmitVerificationInput {
 }
 
 const getApiKey = (): string | null => {
-  const key = import.meta.env.VITE_BASESCAN_API_KEY;
-  return typeof key === "string" && key.length > 0 ? key : null;
+  // Sourced from a single helper so Vercel-managed env stays the only
+  // source of truth — see src/config/env.ts.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const key = (import.meta.env.VITE_BASESCAN_API_KEY as string | undefined) ?? "";
+  return key.length > 0 ? key : null;
 };
 
 const normalizeConstructorArgs = (raw?: string): string => {
