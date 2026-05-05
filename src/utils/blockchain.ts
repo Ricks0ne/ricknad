@@ -1,6 +1,7 @@
 
 import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
+import { BASESCAN_API_KEY, isEnvConfigured, appendDataSuffix, getDataSuffixHex } from "../config/env";
 import { Transaction } from "../types/blockchain";
 
 const BASESCAN_API_URL = "https://api.basescan.org/api";
@@ -140,7 +141,10 @@ export const getWalletTransactions = async (address: string, limit = 5): Promise
       sort: "desc",
     });
 
-    const basescanKey = import.meta.env.VITE_BASESCAN_API_KEY;
+    const basescanKey = BASESCAN_API_KEY;
+    if (!basescanKey) {
+      console.warn("VITE_BASESCAN_API_KEY missing — falling back to keyless Blockscout indexer (rate-limited).");
+    }
     const indexerUrls = [
       basescanKey ? `${BASESCAN_API_URL}?${params.toString()}&apikey=${basescanKey}` : null,
       `${BLOCKSCOUT_API_URL}?${params.toString()}`,
