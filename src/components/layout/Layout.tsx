@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import EnvStatusBanner from '@/components/EnvStatusBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Button>
           )}
           
+          <EnvStatusBanner />
           {children}
         </div>
       </main>

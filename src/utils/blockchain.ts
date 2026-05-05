@@ -1,6 +1,7 @@
 
 import { ethers } from "ethers";
 import { BASE_TESTNET } from "../config/base";
+import { BASESCAN_API_KEY, isEnvConfigured, appendDataSuffix, getDataSuffixHex } from "../config/env";
 import { Transaction } from "../types/blockchain";
 
 const BASESCAN_API_URL = "https://api.basescan.org/api";
@@ -140,7 +141,10 @@ export const getWalletTransactions = async (address: string, limit = 5): Promise
       sort: "desc",
     });
 
-    const basescanKey = import.meta.env.VITE_BASESCAN_API_KEY;
+    const basescanKey = BASESCAN_API_KEY;
+    if (!basescanKey) {
+      console.warn("VITE_BASESCAN_API_KEY missing — falling back to keyless Blockscout indexer (rate-limited).");
+    }
     const indexerUrls = [
       basescanKey ? `${BASESCAN_API_URL}?${params.toString()}&apikey=${basescanKey}` : null,
       `${BLOCKSCOUT_API_URL}?${params.toString()}`,
@@ -201,6 +205,10 @@ export const deployContract = async (
   constructorArgs: unknown[] = [],
 ) => {
   try {
+    if (!isEnvConfigured()) {
+      throw new Error("Missing environment configuration. Please set required variables in Vercel.");
+    }
+
     console.log("Deploying contract with signer:", signer);
     console.log("ABI length:", abi.length);
     console.log("Bytecode length:", bytecode.length);
@@ -208,39 +216,38 @@ export const deployContract = async (
 
     // Ensure bytecode is properly formatted with 0x prefix
     const formattedBytecode = bytecode.startsWith('0x') ? bytecode : `0x${bytecode}`;
-    
+
     // Validate bytecode format
     try {
-      // Verify this is a valid hex string that ethers can handle
       ethers.getBytes(formattedBytecode);
     } catch (error) {
       console.error("Invalid bytecode format:", error);
       throw new Error("Invalid bytecode format. Please recompile the contract.");
     }
-    
-    // Create a contract factory with the ABI, bytecode, and signer
+
+    // Build a deploy transaction manually so we can append the Base Builder
+    // Code dataSuffix to the calldata before sending. ContractFactory.deploy
+    // would bypass our suffix injection.
     const factory = new ethers.ContractFactory(abi, formattedBytecode, signer);
-    console.log("Contract factory created");
-    
-    // Deploy the contract - this will trigger a transaction signature request
-    console.log("Deploying contract...");
-    const contract = await factory.deploy(...constructorArgs);
-    console.log("Deployment transaction sent, waiting for confirmation...");
-    
-    // Wait for the contract to be deployed
-    await contract.waitForDeployment();
-    console.log("Contract deployed!");
-    
-    // Get the deployed contract address and transaction hash
-    const address = await contract.getAddress();
-    const txHash = contract.deploymentTransaction()?.hash || '';
-    
-    console.log("Deployed at address:", address);
-    console.log("Deployment transaction hash:", txHash);
-    
+    const deployTx = await factory.getDeployTransaction(...constructorArgs);
+    const suffix = getDataSuffixHex();
+    if (suffix && deployTx.data) {
+      deployTx.data = appendDataSuffix(deployTx.data as string);
+      console.log("Appended Base builder dataSuffix to deployment calldata.");
+    }
+
+    console.log("Sending deployment transaction…");
+    const sent = await signer.sendTransaction(deployTx);
+    console.log("Deployment tx hash:", sent.hash);
+    const receipt = await sent.wait();
+    if (!receipt || !receipt.contractAddress) {
+      throw new Error("Deployment transaction did not return a contract address.");
+    }
+
+    console.log("Deployed at address:", receipt.contractAddress);
     return {
-      address: address,
-      deploymentTx: txHash,
+      address: receipt.contractAddress,
+      deploymentTx: sent.hash,
     };
   } catch (error) {
     console.error("Failed to deploy contract:", error);

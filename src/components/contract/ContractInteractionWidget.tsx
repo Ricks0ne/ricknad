@@ -11,6 +11,7 @@ import { AlertCircle, ExternalLink, Loader2, Play } from 'lucide-react';
 import { SmartContract } from '@/types/blockchain';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BASE_MAINNET } from '@/config/base';
+import { isEnvConfigured, appendDataSuffix, getDataSuffixHex } from '@/config/env';
 
 // ---------------------------------------------------------------------------
 // ABI types
@@ -287,6 +288,10 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
       toast.error('Connect your wallet to send transactions.');
       return;
     }
+    if (!isEnvConfigured()) {
+      toast.error('Missing environment configuration. Please set required variables in Vercel.');
+      return;
+    }
     const fk = fnKey(fn);
     setTxStates((s) => ({ ...s, [fk]: { phase: 'signing' } }));
     try {
@@ -295,7 +300,23 @@ const ContractInteractionWidget: React.FC<ContractInteractionWidgetProps> = ({ c
       if (fn.stateMutability === 'payable') {
         overrides.value = parseEtherValue(payableValues[fk] ?? '');
       }
-      const sentTx: ethers.ContractTransactionResponse = await writeContract[fn.name](...args, overrides);
+      // Build calldata so we can append the Base Builder Code dataSuffix
+      // before sending. Falls back to the standard ethers contract call
+      // when no suffix is configured.
+      const suffix = getDataSuffixHex();
+      let sentTx: ethers.ContractTransactionResponse;
+      if (suffix) {
+        const data = writeContract.interface.encodeFunctionData(fn.name, args);
+        const signer = writeContract.runner as ethers.Signer;
+        const populated = await signer.sendTransaction({
+          to: contract.address,
+          data: appendDataSuffix(data),
+          ...overrides,
+        });
+        sentTx = populated as unknown as ethers.ContractTransactionResponse;
+      } else {
+        sentTx = await writeContract[fn.name](...args, overrides);
+      }
       setTxStates((s) => ({ ...s, [fk]: { phase: 'pending', txHash: sentTx.hash } }));
       toast.info(`Transaction sent: ${sentTx.hash.slice(0, 10)}…`);
       const receipt = await sentTx.wait();
